@@ -1,0 +1,7 @@
+-i https://pypi.org/simple
+datasets
+huggingface-hub
+smolagents
+litellm
+tenacity
+arize-phoenix
