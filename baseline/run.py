@@ -21,9 +21,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import datasets
 import pandas as pd
-from dabstep_benchmark.utils import evaluate
-from smolagents.utils import console
-from utils import TqdmLoggingHandler
+# from smolagents.utils import console
 from constants import REPO_ID
 from tqdm import tqdm
 from prompts import (
@@ -39,7 +37,9 @@ from utils import (
     get_tasks_to_run,
     append_answer,
     append_console_output,
-    download_context
+    download_context, 
+    evaluate,
+    TqdmLoggingHandler
 )
 
 logging.basicConfig(level=logging.WARNING, handlers=[TqdmLoggingHandler()])
@@ -84,8 +84,8 @@ def run_single_task(
         )
         agent = create_code_agent_with_chat_llm(model_id, api_base, api_key, max_steps)
 
-    with console.capture() as capture:
-        answer = agent.run(prompt)
+    # with console.capture() as capture:
+    answer = agent.run(prompt)
 
     logger.warning(f"Task id: {task['task_id']}\tQuestion: {task['question']} Answer: {answer}\n{'=' * 50}")
 

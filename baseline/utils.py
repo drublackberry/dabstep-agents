@@ -107,3 +107,31 @@ def create_code_agent_with_chat_llm(model_id: str, api_base=None, api_key=None, 
 
     agent.python_executor.static_tools.update({"open": read_only_open})
     return agent
+
+# ported from leaderboard
+def evaluate(agent_answers: pd.DataFrame, tasks_with_gt: pd.DataFrame, submission_id: str = ""):
+    task_scores = []
+    for index, row in tasks_with_gt.iterrows():
+          correct_answer = row["answer"]
+          level = str(row["level"])
+          task_id = str(row["task_id"])
+
+          if task_id not in agent_answers["task_id"].values:
+              raise KeyError(f"Task ID: {task_id} not found. Are you sure you submitted the correct file?")
+
+          agent_answer = agent_answers.loc[agent_answers.task_id == task_id, "agent_answer"].values[0]
+          # num_steps = agent_answers.loc[agent_answers.task_id == task_id, "num_steps"].values[0]
+          score = question_scorer(agent_answer, correct_answer)
+
+          task_scores.append(
+              {
+                  "submission_id": submission_id,
+                  "task_id": task_id,
+                  "score": score,
+                  "level": level,
+                  "agent_answer": agent_answer,
+                  # "num_steps": num_steps,
+              }
+          )
+
+    return task_scores
