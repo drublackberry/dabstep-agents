@@ -2,7 +2,7 @@ import json
 from tqdm import tqdm
 import logging
 import threading
-from smolagents import CodeAgent
+from smolagents import CodeAgent, PromptTemplates
 from custom_agent import CustomCodeAgent
 from custom_litellm import LiteLLMModelWithBackOff
 from huggingface_hub import hf_hub_download
@@ -23,7 +23,7 @@ def read_only_open(*a, **kw):
         raise Exception("Only mode='r' allowed for the function open")
     return open(*a, **kw)
 
-def download_context(base_dir: str) -> str:
+def download_context(base_dir: str, hf_token: str = None) -> str:
     ctx_files = [
         "data/context/acquirer_countries.csv",
         "data/context/payments.csv",
@@ -34,7 +34,7 @@ def download_context(base_dir: str) -> str:
         "data/context/payments-readme.md"
     ]
     for f in ctx_files:
-        hf_hub_download(REPO_ID, repo_type="dataset", filename=f, local_dir=base_dir, force_download=True)
+        hf_hub_download(REPO_ID, repo_type="dataset", filename=f, local_dir=base_dir, force_download=True, token=hf_token)
 
     root_dir = Path(__file__).resolve().parent.parent
     full_path = Path(base_dir) / Path(ctx_files[0]).parent
@@ -98,16 +98,20 @@ def create_code_agent_with_reasoning_llm(model_id: str, api_base=None, api_key=N
     return agent
 
 def create_code_agent_with_chat_llm(model_id: str, api_base=None, api_key=None, max_steps=10):
+
+    prompt_templates = PromptTemplates(system_prompt=chat_llm_system_prompt)
+
     agent = CodeAgent(
-        system_prompt=chat_llm_system_prompt,
         tools=[],
         model=LiteLLMModelWithBackOff(model_id=model_id, api_base=api_base, api_key=api_key, max_tokens=3000),
+        prompt_templates=prompt_templates,
         additional_authorized_imports=ADDITIONAL_AUTHORIZED_IMPORTS,
         max_steps=max_steps,
         verbosity_level=3,
+        executor_type="local",
     )
 
-    agent.python_executor.static_tools.update({"open": read_only_open})
+    # agent.python_executor.static_tools.update({"open": read_only_open})
     return agent
 
 # ported from leaderboard

@@ -106,7 +106,7 @@ def main():
     args = parse_args()
     logger.warning(f"Starting run with arguments: {args}")
 
-    ctx_path = download_context(str(Path().resolve()))
+    ctx_path = download_context(str(Path().resolve()), args.api_key)
 
     runs_dir = Path().resolve() / "runs"
     runs_dir.mkdir(parents=True, exist_ok=True)
@@ -124,30 +124,43 @@ def main():
         yaml.dump(args_dict, f, default_flow_style=False)
 
     # Load dataset with user-chosen split
-    data = datasets.load_dataset(REPO_ID, name="tasks", split=args.split, download_mode='force_redownload')
+    data = datasets.load_dataset(REPO_ID, name="tasks", split=args.split, download_mode='force_redownload', token=args.api_key)
 
     if args.max_tasks >= 0 and args.tasks_ids is not None:
         logger.error(f"Can not provide {args.max_tasks=} and {args.tasks_ids=} at the same time")
     total = len(data) if args.max_tasks < 0 else min(len(data), args.max_tasks)
 
     tasks_to_run = get_tasks_to_run(data, total, base_filename, args.tasks_ids)
-    with ThreadPoolExecutor(max_workers=args.concurrency) as exe:
-        futures = [
-            exe.submit(
-                run_single_task,
-               task,
-               args.model_id,
-               args.api_base,
-               args.api_key,
-               ctx_path,
-               base_filename,
-               (args.split == "dev"),
-               args.max_steps
-            )
-            for task in tasks_to_run
-        ]
-        for f in tqdm(as_completed(futures), total=len(tasks_to_run), desc="Processing tasks"):
-            f.result()
+
+    for task in tasks_to_run:
+        run_single_task(
+            task=task, 
+            model_id=args.model_id, 
+            api_base=args.api_base, 
+            api_key=args.api_key, 
+            ctx_path=ctx_path,
+            base_filename=base_filename,
+            is_dev_data=True, 
+            max_steps=args.max_steps)
+    
+
+    # with ThreadPoolExecutor(max_workers=args.concurrency) as exe:
+    #     futures = [
+    #         exe.submit(
+    #             run_single_task,
+    #            task,
+    #            args.model_id,
+    #            args.api_base,
+    #            args.api_key,
+    #            ctx_path,
+    #            base_filename,
+    #            (args.split == "dev"),
+    #            args.max_steps
+    #         )
+    #         for task in tasks_to_run
+    #     ]
+    #     for f in tqdm(as_completed(futures), total=len(tasks_to_run), desc="Processing tasks"):
+    #         f.result()
 
     logger.warning("All tasks processed.")
 
