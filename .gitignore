@@ -2,6 +2,8 @@
 venv/
 dabstep-venv/
 dabstep_benchmark/
+data/
+runs/
 
 
 # Byte-compiled / optimized / DLL files
