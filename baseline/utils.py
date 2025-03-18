@@ -9,6 +9,7 @@ from huggingface_hub import hf_hub_download
 from constants import REPO_ID, ADDITIONAL_AUTHORIZED_IMPORTS
 from pathlib import Path
 from prompts import reasoning_llm_system_prompt, chat_llm_system_prompt
+import pandas as pd
 
 append_answer_lock = threading.Lock()
 append_console_output_lock = threading.Lock()
@@ -41,6 +42,7 @@ def download_context(base_dir: str) -> str:
     return str(relative_path)
 
 def is_reasoning_llm(model_id: str) -> bool:
+    # TODO: expose a list in a YAML file
     reasoning_llm_list = [
         "openai/o1",
         "openai/o3",
