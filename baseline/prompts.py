@@ -1,4 +1,8 @@
-from smolagents.prompts import CODE_SYSTEM_PROMPT
+from smolagents import CodeAgent, HfApiModel
+
+agent = CodeAgent(tools=[], model=HfApiModel(), add_base_tools=True)
+chat_llm_system_prompt  = agent.prompt_templates["system_prompt"]
+
 
 reasoning_llm_system_prompt = """You are an expert data analyst who can solve any task using code blobs. You will be given a task to solve as best as you can. 
 In the environment there exists data which will help you solve your data analyst task, this data is spread out across files in this directory: `{ctx_path}`.
@@ -44,8 +48,6 @@ answer = df["result"].mean()
 final_answer(answer)
 ```<end_code>
 """
-
-chat_llm_system_prompt = CODE_SYSTEM_PROMPT
 
 reasoning_llm_task_prompt = """
 {question}
