@@ -5,3 +5,4 @@ smolagents
 litellm
 tenacity
 arize-phoenix
+openinference-instrumentation-smolagents
