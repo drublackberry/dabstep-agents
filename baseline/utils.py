@@ -34,7 +34,7 @@ def download_context(base_dir: str, hf_token: str = None) -> str:
         "data/context/payments-readme.md"
     ]
     for f in ctx_files:
-        hf_hub_download(REPO_ID, repo_type="dataset", filename=f, local_dir=base_dir, force_download=True, token=hf_token)
+        hf_hub_download(REPO_ID, repo_type="dataset", filename=f, local_dir=base_dir, token=hf_token)
 
     root_dir = Path(__file__).resolve().parent.parent
     full_path = Path(base_dir) / Path(ctx_files[0]).parent

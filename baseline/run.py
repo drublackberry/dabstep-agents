@@ -16,7 +16,7 @@ SmolagentsInstrumentor().instrument(tracer_provider=trace_provider)
 import argparse
 import logging
 import os
-import time
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import datasets
@@ -55,8 +55,10 @@ def parse_args():
     parser.add_argument("--tasks-ids", type=int, nargs="+", default=None)
     parser.add_argument("--api-base", type=str, default=None)
     parser.add_argument("--api-key", type=str, default=None)
+    parser.add_argument("--hf_token", type=str, default=None)
     parser.add_argument("--split", type=str, default="default", choices=["default", "dev"])
     parser.add_argument("--timestamp", type=str, default=None)
+
     return parser.parse_args()
 
 
@@ -106,11 +108,11 @@ def main():
     args = parse_args()
     logger.warning(f"Starting run with arguments: {args}")
 
-    ctx_path = download_context(str(Path().resolve()), args.api_key)
+    ctx_path = download_context(str(Path().resolve()), args.hf_token)
 
     runs_dir = Path().resolve() / "runs"
     runs_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = time.time() if not args.timestamp else args.timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") if not args.timestamp else args.timestamp
     base_filename = runs_dir / f"{args.model_id.replace('/', '_').replace('.', '_')}/{args.split}/{int(timestamp)}"
 
     # save config
@@ -120,11 +122,12 @@ def main():
             args.system_prompt = reasoning_llm_system_prompt
         else:
             args.system_prompt = chat_llm_system_prompt
+        args.timestamp = timestamp
         args_dict = vars(args)
         yaml.dump(args_dict, f, default_flow_style=False)
 
     # Load dataset with user-chosen split
-    data = datasets.load_dataset(REPO_ID, name="tasks", split=args.split, download_mode='force_redownload', token=args.api_key)
+    data = datasets.load_dataset(REPO_ID, name="tasks", split=args.split, download_mode='reuse_dataset_if_exists', token=args.hf_token)
 
     if args.max_tasks >= 0 and args.tasks_ids is not None:
         logger.error(f"Can not provide {args.max_tasks=} and {args.tasks_ids=} at the same time")
