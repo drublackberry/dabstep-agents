@@ -101,7 +101,6 @@ def run_single_task(
         append_answer(entry, answers_file)
     else:
         append_answer(answer_dict, answers_file)
-    append_console_output(capture.get(), logs_file)
 
 
 def main():

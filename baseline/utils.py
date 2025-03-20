@@ -2,7 +2,7 @@ import json
 from tqdm import tqdm
 import logging
 import threading
-from smolagents import CodeAgent, PromptTemplates
+from smolagents import CodeAgent
 from custom_agent import CustomCodeAgent
 from custom_litellm import LiteLLMModelWithBackOff
 from huggingface_hub import hf_hub_download
@@ -10,6 +10,7 @@ from constants import REPO_ID, ADDITIONAL_AUTHORIZED_IMPORTS
 from pathlib import Path
 from prompts import reasoning_llm_system_prompt, chat_llm_system_prompt
 import pandas as pd
+from scorer import question_scorer
 
 append_answer_lock = threading.Lock()
 append_console_output_lock = threading.Lock()
@@ -99,19 +100,16 @@ def create_code_agent_with_reasoning_llm(model_id: str, api_base=None, api_key=N
 
 def create_code_agent_with_chat_llm(model_id: str, api_base=None, api_key=None, max_steps=10):
 
-    prompt_templates = PromptTemplates(system_prompt=chat_llm_system_prompt)
-
+    # use the default system prompt
     agent = CodeAgent(
         tools=[],
         model=LiteLLMModelWithBackOff(model_id=model_id, api_base=api_base, api_key=api_key, max_tokens=3000),
-        prompt_templates=prompt_templates,
         additional_authorized_imports=ADDITIONAL_AUTHORIZED_IMPORTS,
         max_steps=max_steps,
         verbosity_level=3,
         executor_type="local",
     )
 
-    # agent.python_executor.static_tools.update({"open": read_only_open})
     return agent
 
 # ported from leaderboard
