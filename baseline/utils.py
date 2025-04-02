@@ -2,7 +2,7 @@ import json
 from tqdm import tqdm
 import logging
 import threading
-from smolagents import CodeAgent
+from smolagents import CodeAgent, OpenAIServerModel
 from custom_agent import CustomCodeAgent
 from custom_litellm import LiteLLMModelWithBackOff
 from huggingface_hub import hf_hub_download
@@ -98,12 +98,14 @@ def create_code_agent_with_reasoning_llm(model_id: str, api_base=None, api_key=N
     agent.system_prompt = agent.system_prompt.format(ctx_path=ctx_path)
     return agent
 
+
 def create_code_agent_with_chat_llm(model_id: str, api_base=None, api_key=None, max_steps=10):
+
 
     # use the default system prompt
     agent = CodeAgent(
         tools=[],
-        model=LiteLLMModelWithBackOff(model_id=model_id, api_base=api_base, api_key=api_key, max_tokens=3000),
+        model=OpenAIServerModel(model_id=model_id, api_base=api_base, api_key=api_key, max_tokens=3000),
         additional_authorized_imports=ADDITIONAL_AUTHORIZED_IMPORTS,
         max_steps=max_steps,
         verbosity_level=3,
