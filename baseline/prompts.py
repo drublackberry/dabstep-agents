@@ -65,5 +65,5 @@ Here is the question you need to answer: {question}
 
 Here are the guidelines you MUST follow when answering the question above: {guidelines}
 
-Before answering the question, reference any documentation in the data dir and leverage its information in your reasoning / planning.
+Before answering the question, reference any documentation in the data dir and leverage its information in your reasoning / planning. And please please the first thing you need to do is to read the manual and understand it well.
 """
