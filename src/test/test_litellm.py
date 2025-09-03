@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
-from langchain_litellm import ChatLiteLLM
-from langchain_core.messages import HumanMessage, AIMessage
+from smolagents import LiteLLMModel
 from test_utils import TEST_PROMPT, get_env
 
 
@@ -9,25 +8,24 @@ load_dotenv()
 BASE_URL, API_KEY, MODEL = get_env()
 
 
-# --- Initialize the LiteLLM Client ---
-# Initialize ChatLiteLLM
-chatllm = ChatLiteLLM(
-    model=MODEL,
+# --- Initialize the LiteLLM Model ---
+# Initialize LiteLLMModel from smolagents
+litellm_model = LiteLLMModel(
+    model_id=f"litellm_proxy/{MODEL}",
     api_base=BASE_URL,
-    custom_llm_provider="litellm_proxy",
     api_key=API_KEY,
     temperature=0.7
 )
 
-print(f"Sending request to model: {MODEL} via litellm client...")
+print(f"Sending request to model: {MODEL} via smolagents LiteLLMModel...")
 
 try:
-    # Single message
-    messages = [HumanMessage(content=TEST_PROMPT)]
-    response = chatllm.invoke(messages)
+    # Send message using smolagents LiteLLMModel with proper message format
+    messages = [{"role": "user", "content": TEST_PROMPT}]
+    response = litellm_model(messages)
 
     print("\n--- Response ---")
-    print(response.content)
+    print(response)
 
 except Exception as e:
     print(f"An error occurred: {e}")

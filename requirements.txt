@@ -6,3 +6,4 @@ litellm
 tenacity
 arize-phoenix
 openinference-instrumentation-smolagents
+python-dotenv
