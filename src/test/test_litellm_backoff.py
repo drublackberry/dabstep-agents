@@ -3,7 +3,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'agents'))
 from custom_litellm import LiteLLMModelWithBackOff
-from test_utils import TEST_PROMPT, get_env
+from .utils import TEST_PROMPT, get_env
 
 
 # Load environment variables from .env file

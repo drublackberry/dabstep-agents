@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from openai import OpenAI
-from test_utils import TEST_PROMPT, get_env
+from .utils import TEST_PROMPT, get_env
 
 # Load environment variables from .env file
 load_dotenv()
