@@ -1,13 +1,7 @@
-from dotenv import load_dotenv
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'agents'))
-from custom_litellm import LiteLLMModelWithBackOff
-from .utils import TEST_PROMPT, get_env
+from utils.utils import get_env
+from agents.custom_litellm import LiteLLMModelWithBackOff
+from agents.prompts import vanilla_prompt
 
-
-# Load environment variables from .env file
-load_dotenv()
 BASE_URL, API_KEY, MODEL = get_env()
 
 
@@ -25,7 +19,7 @@ print(f"Sending request to model: {MODEL} via LiteLLMModelWithBackOff...")
 
 try:
     # Send message using LiteLLMModelWithBackOff with proper message format
-    messages = [{"role": "user", "content": TEST_PROMPT}]
+    messages = [{"role": "user", "content": vanilla_prompt}]
     response = litellm_model_backoff(messages)
 
     print("\n--- Response ---")

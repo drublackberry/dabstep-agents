@@ -1,9 +1,7 @@
-from dotenv import load_dotenv
 from openai import OpenAI
-from .utils import TEST_PROMPT, get_env
+from utils.utils import get_env
+from agents.prompts import vanilla_prompt
 
-# Load environment variables from .env file
-load_dotenv()
 BASE_URL, API_KEY, MODEL = get_env()
 
 # --- Initialize the OpenAI Client pointing to our platform
@@ -19,7 +17,7 @@ try:
         model=MODEL,
         messages=[
             {"role": "system", "content": "You are a helpful and concise assistant."},
-            {"role": "user", "content": TEST_PROMPT},
+            {"role": "user", "content": vanilla_prompt},
         ],
         temperature=0.7,
         max_tokens=500,

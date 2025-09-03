@@ -1,10 +1,7 @@
-from dotenv import load_dotenv
 from smolagents import LiteLLMModel
-from .utils import TEST_PROMPT, get_env
+from utils.utils import get_env
+from agents.prompts import vanilla_prompt
 
-
-# Load environment variables from .env file
-load_dotenv()
 BASE_URL, API_KEY, MODEL = get_env()
 
 
@@ -21,7 +18,7 @@ print(f"Sending request to model: {MODEL} via smolagents LiteLLMModel...")
 
 try:
     # Send message using smolagents LiteLLMModel with proper message format
-    messages = [{"role": "user", "content": TEST_PROMPT}]
+    messages = [{"role": "user", "content": vanilla_prompt}]
     response = litellm_model(messages)
 
     print("\n--- Response ---")

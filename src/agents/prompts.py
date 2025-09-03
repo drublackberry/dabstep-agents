@@ -1,8 +1,7 @@
-from smolagents import CodeAgent, HfApiModel
+# Hardcoded system prompt for chat LLM
+chat_llm_system_prompt = """You are a helpful AI assistant. You can help users with various tasks including answering questions, providing information, and assisting with problem-solving. Be concise, accurate, and helpful in your responses."""
 
-agent = CodeAgent(tools=[], model=HfApiModel(), add_base_tools=True)
-chat_llm_system_prompt  = agent.prompt_templates["system_prompt"]
-
+vanilla_prompt = "Reply I'm here! with a hand emoji. After that tell a dad joke about computers"
 
 reasoning_llm_system_prompt = """You are an expert data analyst who can solve any task using code blobs. You will be given a task to solve as best as you can. 
 In the environment there exists data which will help you solve your data analyst task, this data is spread out across files in this directory: `{ctx_path}`.

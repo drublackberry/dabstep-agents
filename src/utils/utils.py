@@ -3,17 +3,36 @@ from tqdm import tqdm
 import logging
 import threading
 from smolagents import CodeAgent, OpenAIServerModel
-from custom_agent import CustomCodeAgent
-from custom_litellm import LiteLLMModelWithBackOff
+from agents.custom_agent import CustomCodeAgent
+from agents.custom_litellm import LiteLLMModelWithBackOff
 from huggingface_hub import hf_hub_download
 from constants import REPO_ID, ADDITIONAL_AUTHORIZED_IMPORTS
 from pathlib import Path
-from prompts import reasoning_llm_system_prompt, chat_llm_system_prompt
+from agents.prompts import reasoning_llm_system_prompt, chat_llm_system_prompt
 import pandas as pd
-from scorer import question_scorer
+from utils.scorer import question_scorer
+import os
+from dotenv import load_dotenv
+
 
 append_answer_lock = threading.Lock()
 append_console_output_lock = threading.Lock()
+
+
+def get_env():
+    # Load environment variables from .env file
+    load_dotenv()
+    
+    # --- Configuration & Validation ---
+    BASE_URL = os.getenv("BASE_URL")
+    API_KEY = os.getenv("API_KEY")
+    MODEL = os.getenv("MODEL")
+    SSL_CERT_FILE = os.getenv("SSL_CERT_FILE")
+
+    if not all([BASE_URL, API_KEY, MODEL, SSL_CERT_FILE]):
+        raise ValueError("One or more required environment variables (BASE_URL, API_KEY, MODEL, SSL_CERT_FILE) are not set in your .env file.")
+
+    return BASE_URL, API_KEY, MODEL
 
 class TqdmLoggingHandler(logging.Handler):
     def emit(self, record):
