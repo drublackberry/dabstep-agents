@@ -4,7 +4,7 @@ import logging
 import threading
 from smolagents import CodeAgent, OpenAIServerModel
 from agents.custom_agent import CustomCodeAgent
-from agents.custom_litellm import LiteLLMModelWithBackOff
+from agents.models import LiteLLMModelWithBackOff
 from huggingface_hub import hf_hub_download
 from constants import REPO_ID, ADDITIONAL_AUTHORIZED_IMPORTS
 from pathlib import Path

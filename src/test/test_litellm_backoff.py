@@ -1,5 +1,5 @@
 from utils.utils import get_env
-from agents.custom_litellm import LiteLLMModelWithBackOff
+from agents.models import LiteLLMModelWithBackOff
 from agents.prompts import vanilla_prompt
 
 BASE_URL, API_KEY, MODEL = get_env()
