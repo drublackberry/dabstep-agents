@@ -24,15 +24,26 @@ def get_env():
     load_dotenv()
     
     # --- Configuration & Validation ---
-    BASE_URL = os.getenv("BASE_URL")
-    API_KEY = os.getenv("API_KEY")
-    MODEL = os.getenv("MODEL")
-    SSL_CERT_FILE = os.getenv("SSL_CERT_FILE")
-
-    if not all([BASE_URL, API_KEY, MODEL, SSL_CERT_FILE]):
-        raise ValueError("One or more required environment variables (BASE_URL, API_KEY, MODEL, SSL_CERT_FILE) are not set in your .env file.")
-
-    return BASE_URL, API_KEY, MODEL
+    config = {
+        "BASE_URL": os.getenv("BASE_URL"),
+        "API_KEY": os.getenv("API_KEY"),
+        "MODEL": os.getenv("MODEL"),
+        "LLM_GATEWAY": os.getenv("LLM_GATEWAY"),
+        "SSL_CERT_FILE": os.getenv("SSL_CERT_FILE")
+    }
+    
+    # Check each required variable individually
+    required_vars = ["BASE_URL", "API_KEY", "MODEL", "SSL_CERT_FILE"]
+    missing_vars = []
+    
+    for var in required_vars:
+        if not config[var]:
+            missing_vars.append(var)
+    
+    if missing_vars:
+        raise ValueError(f"The following required environment variables are not set in your .env file: {', '.join(missing_vars)}")
+    
+    return config
 
 class TqdmLoggingHandler(logging.Handler):
     def emit(self, record):

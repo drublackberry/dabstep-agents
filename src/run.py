@@ -1,17 +1,10 @@
 #!/usr/bin/env python3
 
 import yaml
-from opentelemetry.sdk.trace import TracerProvider
+from utils.tracing import setup_smolagents_tracing
 
-from openinference.instrumentation.smolagents import SmolagentsInstrumentor
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-
-endpoint = "http://0.0.0.0:6006/v1/traces"
-trace_provider = TracerProvider()
-trace_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter(endpoint)))
-
-SmolagentsInstrumentor().instrument(tracer_provider=trace_provider)
+# Initialize tracing for all smolagents usage
+setup_smolagents_tracing()
 
 import argparse
 import logging
