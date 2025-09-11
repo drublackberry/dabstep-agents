@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-Simple test script for ReasoningCodeAgent.
-Run this to test your agent with a real LLM connection.
+Main test orchestrator for ReasoningCodeAgent.
+This script provides a quick overview and directs to specialized test files.
 
 Usage:
     python test_agent_simple.py
+
+For detailed testing, run the specialized test files:
+    python test_read_only_security.py  # Security-focused tests
+    python test_data_analysis.py       # Data analysis capability tests
 
 Make sure to set your API key:
     export OPENAI_API_KEY="your-key-here"
@@ -138,9 +142,9 @@ def test_data_analysis(agent, data_dir):
     
 
 def main():
-    """Main test function."""
-    print("🚀 Testing ReasoningCodeAgent")
-    print("=" * 50)
+    """Main test orchestrator function."""
+    print("🚀 ReasoningCodeAgent Test Suite")
+    print("=" * 60)
     
     # Get LLM configuration
     config = get_env()
@@ -152,11 +156,25 @@ def main():
     if api_base:
         print(f"🔧 Using API base: {api_base}")
     
-    # Create temporary test environment
+    # Show tracing endpoint
+    tracing_endpoint = os.getenv("OTLP_ENDPOINT", "http://0.0.0.0:6006/v1/traces")
+    phoenix_ui = tracing_endpoint.replace("/v1/traces", "").replace("0.0.0.0", "localhost")
+    print(f"📊 Phoenix UI available at: {phoenix_ui}")
+    print(f"🔍 Traces endpoint: {tracing_endpoint}")
+    
+    print("\n📋 Available Test Suites:")
+    print("  1. test_read_only_security.py - Comprehensive security testing")
+    print("  2. test_data_analysis.py      - Advanced data analysis capabilities")
+    print("  3. test_litellm_models.py     - LiteLLM model functionality")
+    print("  4. test_llm_connections.py    - LLM connection validation")
+    
+    print("\n🔍 Quick Validation Test:")
+    
+    # Create temporary test environment for quick validation
     with tempfile.TemporaryDirectory() as temp_dir:
         print(f"📁 Using temporary directory: {temp_dir}")
         
-        # Create test data
+        # Create minimal test data
         data_dir = create_test_data(temp_dir)
         
         # Initialize agent
@@ -166,7 +184,7 @@ def main():
                 model_id=model_id,
                 api_base=api_base,
                 api_key=api_key,
-                max_steps=10,
+                max_steps=5,  # Reduced for quick test
                 ctx_path=data_dir
             )
             print("✅ Agent initialized successfully")
@@ -174,21 +192,24 @@ def main():
             print(f"❌ Failed to initialize agent: {e}")
             return
         
-        # Run tests
+        # Run quick validation tests
         security_passed = test_read_only_security(agent, data_dir)
-        # analysis_passed = test_data_analysis(agent, data_dir)
-        analysis_passed = True
-        
+        analysis_passed = test_data_analysis(agent, data_dir)
+
         # Summary
-        print("\n" + "=" * 50)
-        print("📊 TEST SUMMARY")
+        print("\n" + "=" * 60)
+        print("📊 QUICK VALIDATION SUMMARY")
         print(f"🔒 Read-only security: {'✅ PASSED' if security_passed else '❌ FAILED'}")
         print(f"📈 Data analysis: {'✅ PASSED' if analysis_passed else '❌ FAILED'}")
         
         if security_passed and analysis_passed:
-            print("\n🎉 All tests passed! Your ReasoningCodeAgent is working correctly.")
+            print("\n🎉 Quick validation passed! Agent is functional.")
+            print("\n💡 For comprehensive testing, run the specialized test files:")
+            print("   python src/test/test_read_only_security.py")
+            print("   python src/test/test_data_analysis.py")
         else:
-            print("\n⚠️  Some tests failed. Check the output above for details.")
+            print("\n⚠️  Quick validation failed. Check the output above for details.")
+            print("   Run specialized tests for detailed diagnostics.")
 
 
 if __name__ == "__main__":
