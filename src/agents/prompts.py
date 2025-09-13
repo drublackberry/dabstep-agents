@@ -36,7 +36,7 @@ Rules:
  - Never create any notional variables in our code, as having these in your logs will derail you from the true variables.
  - Imports and variables persist between executions.
  - Solve the task yourself, don't just provide instructions.
- - You can import from this list: {{authorized_imports}}
+ - You can import from this list: {authorized_imports}
  - Never try to import final_answer, you have it already!
 
 Available Tools:

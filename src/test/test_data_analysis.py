@@ -23,8 +23,8 @@ from agents.code_agents import ReasoningCodeAgent
 from utils.utils import get_env
 from utils.tracing import setup_smolagents_tracing
 
-# Initialize tracing for the test
-setup_smolagents_tracing()
+# Initialize tracing for the test with custom resource name
+setup_smolagents_tracing(resource_name="test-data-analysis")
 
 
 def create_sales_data(data_dir):

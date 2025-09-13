@@ -72,16 +72,6 @@ def download_context(base_dir: str, hf_token: str = None) -> str:
     relative_path = full_path.relative_to(root_dir)
     return str(relative_path)
 
-def is_reasoning_llm(model_id: str) -> bool:
-    # TODO: expose a list in a YAML file
-    reasoning_llm_list = [
-        "openai/o1",
-        "openai/o3",
-        "openai/o3-mini",
-        "deepseek/deepseek-reasoner"
-    ]
-    return model_id in reasoning_llm_list
-
 def get_tasks_to_run(data, total: int, base_filename: Path, tasks_ids: list[int]):
     import json
     f = base_filename.parent / f"{base_filename.stem}_answers.jsonl"

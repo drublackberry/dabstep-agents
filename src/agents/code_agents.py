@@ -51,7 +51,7 @@ class ReasoningCodeAgent(CodeAgent):
         # Format and set system prompt after initialization
         formatted_prompt = reasoning_llm_system_prompt
         if ctx_path:
-            formatted_prompt = reasoning_llm_system_prompt.format(ctx_path=ctx_path)
+            formatted_prompt = reasoning_llm_system_prompt.format(ctx_path=ctx_path, authorized_imports=FILTERED_AUTHORIZED_IMPORTS)
         
         # Set the system prompt using the prompt_templates approach
         self.prompt_templates["system_prompt"] = formatted_prompt
