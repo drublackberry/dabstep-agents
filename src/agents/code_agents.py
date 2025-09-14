@@ -4,8 +4,6 @@ from agents.prompts import reasoning_llm_system_prompt
 from constants import ADDITIONAL_AUTHORIZED_IMPORTS
 from utils.tracing import setup_smolagents_tracing
 
-# Filter out markdown from authorized imports to avoid missing dependency error
-FILTERED_AUTHORIZED_IMPORTS = [imp for imp in ADDITIONAL_AUTHORIZED_IMPORTS if imp != 'markdown']
 
 
 def read_only_open(*args, **kwargs):
@@ -43,7 +41,7 @@ class ReasoningCodeAgent(CodeAgent):
             tools=[],
             model=LiteLLMModelWithBackOff(
                 model_id=model_id, api_base=api_base, api_key=api_key, max_tokens=None, max_completion_tokens=3000),
-            additional_authorized_imports=FILTERED_AUTHORIZED_IMPORTS,
+            additional_authorized_imports=ADDITIONAL_AUTHORIZED_IMPORTS,
             max_steps=max_steps,
             verbosity_level=3,
         )
@@ -51,7 +49,7 @@ class ReasoningCodeAgent(CodeAgent):
         # Format and set system prompt after initialization
         formatted_prompt = reasoning_llm_system_prompt
         if ctx_path:
-            formatted_prompt = reasoning_llm_system_prompt.format(ctx_path=ctx_path, authorized_imports=FILTERED_AUTHORIZED_IMPORTS)
+            formatted_prompt = reasoning_llm_system_prompt.format(ctx_path=ctx_path, authorized_imports=ADDITIONAL_AUTHORIZED_IMPORTS)
         
         # Set the system prompt using the prompt_templates approach
         self.prompt_templates["system_prompt"] = formatted_prompt

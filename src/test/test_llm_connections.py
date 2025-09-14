@@ -5,7 +5,7 @@ Combines functionality from test_litellm.py, test_litellm_backoff.py, and test_l
 
 from openai import OpenAI
 from smolagents import LiteLLMModel
-from utils.utils import get_env
+from utils.execution import get_env
 from agents.models import LiteLLMModelWithBackOff
 from agents.prompts import vanilla_prompt
 

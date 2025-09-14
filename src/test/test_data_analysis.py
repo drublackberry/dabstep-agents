@@ -20,7 +20,7 @@ load_dotenv()
 sys.path.insert(0, 'src')
 
 from agents.code_agents import ReasoningCodeAgent
-from utils.utils import get_env
+from utils.execution import get_env
 from utils.tracing import setup_smolagents_tracing
 
 # Initialize tracing for the test with custom resource name

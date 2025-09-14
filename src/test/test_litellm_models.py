@@ -7,7 +7,7 @@ import pytest
 from smolagents import LiteLLMModel
 from agents.models import LiteLLMModelWithBackOff
 from agents.prompts import vanilla_prompt
-from utils.utils import get_env
+from utils.execution import get_env
 
 
 class TestLiteLLMModels:
