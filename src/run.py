@@ -30,22 +30,40 @@ from utils.dabstep_utils import (
     download_context, 
     evaluate
 )
-from utils.execution import TqdmLoggingHandler
+from utils.execution import TqdmLoggingHandler, get_env
+from agents.code_agents import ReasoningCodeAgent
 
 logging.basicConfig(level=logging.WARNING, handlers=[TqdmLoggingHandler()])
 logger = logging.getLogger(__name__)
 
+def is_reasoning_llm(model_id: str) -> bool:
+    """Check if the model is a reasoning LLM."""
+    reasoning_llm_list = [
+        "openai/o1",
+        "openai/o3",
+        "openai/o3-mini",
+        "deepseek/deepseek-reasoner"
+    ]
+    return model_id in reasoning_llm_list
+
 def parse_args():
+    # Load environment configuration first
+    try:
+        env_config = get_env()
+    except ValueError as e:
+        logger.warning(f"Environment configuration error: {e}")
+        env_config = {}
+    
     parser = argparse.ArgumentParser()
-    parser.add_argument("--concurrency", type=int, default=4)
-    parser.add_argument("--model-id", type=str, default="openai/o3-mini")
+    parser.add_argument("--concurrency", type=int, default=1)
+    parser.add_argument("--model-id", type=str, default=env_config.get("MODEL", "openai/o3-mini"))
     parser.add_argument("--experiment", type=str, default=None)
     parser.add_argument("--max-tasks", type=int, default=-1)
     parser.add_argument("--max-steps", type=int, default=10)
     parser.add_argument("--tasks-ids", type=int, nargs="+", default=None)
-    parser.add_argument("--api-base", type=str, default=None)
-    parser.add_argument("--api-key", type=str, default=None)
-    parser.add_argument("--hf_token", type=str, default=None)
+    parser.add_argument("--api-base", type=str, default=env_config.get("BASE_URL"))
+    parser.add_argument("--api-key", type=str, default=env_config.get("API_KEY"))
+    parser.add_argument("--hf_token", type=str, default=env_config.get("HF_TOKEN"))
     parser.add_argument("--split", type=str, default="default", choices=["default", "dev"])
     parser.add_argument("--timestamp", type=str, default=None)
 
@@ -62,19 +80,27 @@ def run_single_task(
         is_dev_data: bool,
         max_steps: int
 ):
+    # Use the unified ReasoningCodeAgent for all models
+    agent = ReasoningCodeAgent(
+        model_id=model_id,
+        api_base=api_base,
+        api_key=api_key,
+        max_steps=max_steps,
+        ctx_path=ctx_path
+    )
+    
+    # Format prompt based on model type
     if is_reasoning_llm(model_id):
         prompt = reasoning_llm_task_prompt.format(
             question=task["question"],
             guidelines=task["guidelines"]
         )
-        agent = create_code_agent_with_reasoning_llm(model_id, api_base, api_key, max_steps, ctx_path)
     else:
         prompt = chat_llm_task_prompt.format(
             ctx_path=ctx_path,
             question=task["question"],
             guidelines=task["guidelines"]
         )
-        agent = create_code_agent_with_chat_llm(model_id, api_base, api_key, max_steps)
 
     # with console.capture() as capture:
     answer = agent.run(prompt)
