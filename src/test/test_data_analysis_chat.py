@@ -29,8 +29,8 @@ from test_data_analysis_shared import (
     setup_test_environment
 )
 
-# Initialize tracing for the test with custom resource name
-setup_smolagents_tracing(resource_name="test-data-analysis-chat")
+# Initialize tracing for the test with chat-specific project
+setup_smolagents_tracing(resource_name="chat-analysis", force_reinit=True)
 
 
 def main():
@@ -55,7 +55,7 @@ def main():
                 model_id=model_id,
                 api_base=api_base,
                 api_key=api_key,
-                max_steps=25,  # More steps for complex analysis
+                max_steps=10,
                 ctx_path=data_dir
             )
             print("✅ ChatCodeAgent initialized successfully")

@@ -45,6 +45,34 @@ def get_env():
     return config
 
 
+def validate_reasoning_model_compatibility(model_id: str, use_reasoning: bool) -> None:
+    """
+    Validate that the use_reasoning parameter is compatible with the model.
+    
+    Args:
+        model_id: The model identifier
+        use_reasoning: Whether reasoning mode is enabled
+        
+    Raises:
+        Warning: If there's a mismatch between model capabilities and use_reasoning setting
+    """
+    reasoning_llm_list = [
+        "openai/o1",
+        "openai/o3",
+        "openai/o3-mini",
+        "deepseek/deepseek-reasoner"
+    ]
+    
+    is_reasoning_model = model_id in reasoning_llm_list
+    
+    if is_reasoning_model and not use_reasoning:
+        logging.warning(f"Model '{model_id}' is a reasoning model but use_reasoning=False. "
+                       f"Consider setting use_reasoning=True for optimal performance.")
+    elif not is_reasoning_model and use_reasoning:
+        logging.warning(f"Model '{model_id}' is not a reasoning model but use_reasoning=True. "
+                       f"Consider setting use_reasoning=False for this model.")
+
+
 class TqdmLoggingHandler(logging.Handler):
     """
     Custom logging handler that works with tqdm progress bars.

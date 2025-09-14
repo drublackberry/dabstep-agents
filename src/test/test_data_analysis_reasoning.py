@@ -29,8 +29,8 @@ from test_data_analysis_shared import (
     setup_test_environment
 )
 
-# Initialize tracing for the test with custom resource name
-setup_smolagents_tracing(resource_name="test-data-analysis-reasoning")
+# Initialize tracing for the test with reasoning-specific project
+setup_smolagents_tracing(resource_name="reasoning-analysis", force_reinit=True)
 
 
 def main():

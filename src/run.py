@@ -16,8 +16,7 @@ import datasets
 import pandas as pd
 # from smolagents.utils import console
 from constants import REPO_ID
-from tqdm import tqdm
-from prompts import (
+from agents.prompts import (
     reasoning_llm_system_prompt,
     reasoning_llm_task_prompt,
     chat_llm_task_prompt,
@@ -30,21 +29,12 @@ from utils.dabstep_utils import (
     download_context, 
     evaluate
 )
-from utils.execution import TqdmLoggingHandler, get_env
-from agents.code_agents import ReasoningCodeAgent
+from utils.execution import TqdmLoggingHandler, get_env, validate_reasoning_model_compatibility
+from agents.code_agents import ReasoningCodeAgent, ChatCodeAgent
 
 logging.basicConfig(level=logging.WARNING, handlers=[TqdmLoggingHandler()])
 logger = logging.getLogger(__name__)
 
-def is_reasoning_llm(model_id: str) -> bool:
-    """Check if the model is a reasoning LLM."""
-    reasoning_llm_list = [
-        "openai/o1",
-        "openai/o3",
-        "openai/o3-mini",
-        "deepseek/deepseek-reasoner"
-    ]
-    return model_id in reasoning_llm_list
 
 def parse_args():
     # Load environment configuration first
@@ -64,8 +54,9 @@ def parse_args():
     parser.add_argument("--api-base", type=str, default=env_config.get("BASE_URL"))
     parser.add_argument("--api-key", type=str, default=env_config.get("API_KEY"))
     parser.add_argument("--hf_token", type=str, default=env_config.get("HF_TOKEN"))
-    parser.add_argument("--split", type=str, default="default", choices=["default", "dev"])
+    parser.add_argument("--split", type=str, default="dev", choices=["default", "dev"])
     parser.add_argument("--timestamp", type=str, default=None)
+    parser.add_argument("--use-reasoning", action="store_true", help="Use reasoning mode for the agent", default=False)
 
     return parser.parse_args()
 
@@ -78,24 +69,33 @@ def run_single_task(
         ctx_path: str,
         base_filename: Path,
         is_dev_data: bool,
-        max_steps: int
+        max_steps: int,
+        use_reasoning: bool
 ):
-    # Use the unified ReasoningCodeAgent for all models
-    agent = ReasoningCodeAgent(
-        model_id=model_id,
-        api_base=api_base,
-        api_key=api_key,
-        max_steps=max_steps,
-        ctx_path=ctx_path
-    )
+    # Validate model compatibility with use_reasoning parameter
+    validate_reasoning_model_compatibility(model_id, use_reasoning)
     
-    # Format prompt based on model type
-    if is_reasoning_llm(model_id):
+    # Choose agent based on use_reasoning parameter
+    if use_reasoning:
+        agent = ReasoningCodeAgent(
+            model_id=model_id,
+            api_base=api_base,
+            api_key=api_key,
+            max_steps=max_steps,
+            ctx_path=ctx_path
+        )
         prompt = reasoning_llm_task_prompt.format(
             question=task["question"],
             guidelines=task["guidelines"]
         )
     else:
+        agent = ChatCodeAgent(
+            model_id=model_id,
+            api_base=api_base,
+            api_key=api_key,
+            max_steps=max_steps,
+            ctx_path=ctx_path
+        )
         prompt = chat_llm_task_prompt.format(
             ctx_path=ctx_path,
             question=task["question"],
@@ -133,7 +133,7 @@ def main():
     # save config
     os.makedirs(base_filename, exist_ok=True)
     with open(base_filename / "config.yaml", "w", encoding="utf-8") as f:
-        if is_reasoning_llm(args.model_id):
+        if args.use_reasoning:
             args.system_prompt = reasoning_llm_system_prompt
         else:
             args.system_prompt = chat_llm_system_prompt
@@ -153,13 +153,14 @@ def main():
     for task in tasks_to_run:
         run_single_task(
             task=task, 
-            model_id=args.model_id, 
+            model_id=f"{os.getenv('LLM_GATEWAY')}/{args.model_id}", 
             api_base=args.api_base, 
             api_key=args.api_key, 
             ctx_path=ctx_path,
             base_filename=base_filename,
             is_dev_data=True, 
-            max_steps=args.max_steps)
+            max_steps=args.max_steps,
+            use_reasoning=args.use_reasoning)
     
 
     # with ThreadPoolExecutor(max_workers=args.concurrency) as exe:
