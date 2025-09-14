@@ -1,6 +1,7 @@
+from abc import ABC, abstractmethod
 from smolagents import CodeAgent, OpenAIServerModel
 from agents.models import LiteLLMModelWithBackOff
-from agents.prompts import reasoning_llm_system_prompt
+from agents.prompts import reasoning_llm_system_prompt, chat_llm_system_prompt
 from constants import ADDITIONAL_AUTHORIZED_IMPORTS
 from utils.tracing import setup_smolagents_tracing
 
@@ -29,8 +30,8 @@ def read_only_open(*args, **kwargs):
     return open(*args, **kwargs)
 
 
-class ReasoningCodeAgent(CodeAgent):
-    """A specialized CodeAgent configured for reasoning LLMs with read-only access."""
+class BaseCodeAgent(CodeAgent, ABC):
+    """Base class for specialized CodeAgents with read-only access and configurable system prompts."""
     
     def __init__(self, model_id: str, api_base=None, api_key=None, max_steps=10, ctx_path=None, enable_tracing=True):
         # Set up tracing before agent initialization
@@ -47,9 +48,9 @@ class ReasoningCodeAgent(CodeAgent):
         )
         
         # Format and set system prompt after initialization
-        formatted_prompt = reasoning_llm_system_prompt
+        formatted_prompt = self.get_system_prompt_template()
         if ctx_path:
-            formatted_prompt = reasoning_llm_system_prompt.format(ctx_path=ctx_path, authorized_imports=ADDITIONAL_AUTHORIZED_IMPORTS)
+            formatted_prompt = self.get_system_prompt_template().format(ctx_path=ctx_path, authorized_imports=ADDITIONAL_AUTHORIZED_IMPORTS)
         
         # Set the system prompt using the prompt_templates approach
         self.prompt_templates["system_prompt"] = formatted_prompt
@@ -59,6 +60,11 @@ class ReasoningCodeAgent(CodeAgent):
         
         # Override the python executor initialization to ensure read-only access
         self._setup_read_only_executor()
+    
+    @abstractmethod
+    def get_system_prompt_template(self) -> str:
+        """Return the system prompt template for this agent type."""
+        pass
     
     def _setup_read_only_executor(self):
         """Set up comprehensive read-only file access."""
@@ -91,5 +97,21 @@ class ReasoningCodeAgent(CodeAgent):
         if hasattr(self, 'python_executor') and self.python_executor is not None:
             self.python_executor.globals['open'] = self._read_only_open
         self._setup_read_only_executor()
+
+
+class ReasoningCodeAgent(BaseCodeAgent):
+    """A specialized CodeAgent configured for reasoning LLMs with read-only access."""
+    
+    def get_system_prompt_template(self) -> str:
+        """Return the reasoning LLM system prompt template."""
+        return reasoning_llm_system_prompt
+
+
+class ChatCodeAgent(BaseCodeAgent):
+    """A specialized CodeAgent configured for chat LLMs with read-only access."""
+    
+    def get_system_prompt_template(self) -> str:
+        """Return the chat LLM system prompt template."""
+        return chat_llm_system_prompt
 
 

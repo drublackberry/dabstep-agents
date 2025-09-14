@@ -1,30 +1,11 @@
-#!/usr/bin/env python3
 """
-Test script for ReasoningCodeAgent data analysis capabilities.
-Tests that the agent can perform comprehensive data analysis tasks.
-
-Usage:
-    python test_data_analysis.py
+Shared utilities for data analysis tests.
+Contains common test data creation and validation functions.
 """
 
 import os
-import sys
 import tempfile
 from pathlib import Path
-from dotenv import load_dotenv
-
-# Load environment variables from .env file if it exists
-load_dotenv()
-
-# Add src to path so we can import our modules
-sys.path.insert(0, 'src')
-
-from agents.code_agents import ReasoningCodeAgent
-from utils.execution import get_env
-from utils.tracing import setup_smolagents_tracing
-
-# Initialize tracing for the test with custom resource name
-setup_smolagents_tracing(resource_name="test-data-analysis")
 
 
 def create_sales_data(data_dir):
@@ -234,10 +215,35 @@ def test_business_insights(agent, data_dir):
         return False
 
 
-def main():
-    """Main test function."""
-    print("📊 Testing ReasoningCodeAgent Data Analysis Capabilities")
-    print("=" * 65)
+def run_analysis_tests(agent, data_dir):
+    """Run all analysis tests and return results."""
+    exploration_passed = test_data_exploration(agent, data_dir)
+    analysis_passed = test_sales_analysis(agent, data_dir)
+    insights_passed = test_business_insights(agent, data_dir)
+    
+    return exploration_passed, analysis_passed, insights_passed
+
+
+def print_test_summary(exploration_passed, analysis_passed, insights_passed, agent_type):
+    """Print test summary results."""
+    print("\n" + "=" * 65)
+    print(f"📊 {agent_type.upper()} DATA ANALYSIS TEST SUMMARY")
+    print(f"🔍 Data exploration: {'✅ PASSED' if exploration_passed else '❌ FAILED'}")
+    print(f"📈 Sales analysis: {'✅ PASSED' if analysis_passed else '❌ FAILED'}")
+    print(f"💡 Business insights: {'✅ PASSED' if insights_passed else '❌ FAILED'}")
+    
+    all_passed = exploration_passed and analysis_passed and insights_passed
+    if all_passed:
+        print(f"\n🎉 All {agent_type} data analysis tests passed! Your agent can perform comprehensive analysis.")
+    else:
+        print(f"\n⚠️  Some {agent_type} analysis tests failed. Check the output above for details.")
+    
+    return all_passed
+
+
+def setup_test_environment():
+    """Set up common test environment and configuration."""
+    from utils.execution import get_env
     
     # Get LLM configuration
     config = get_env()
@@ -255,46 +261,4 @@ def main():
     print(f"📊 Phoenix UI available at: {phoenix_ui}")
     print(f"🔍 Traces endpoint: {tracing_endpoint}")
     
-    # Create temporary test environment
-    with tempfile.TemporaryDirectory() as temp_dir:
-        print(f"📁 Using temporary directory: {temp_dir}")
-        
-        # Create test data
-        data_dir = create_sales_data(temp_dir)
-        
-        # Initialize agent
-        print("\n🤖 Initializing ReasoningCodeAgent...")
-        try:
-            agent = ReasoningCodeAgent(
-                model_id=model_id,
-                api_base=api_base,
-                api_key=api_key,
-                max_steps=25,  # More steps for complex analysis
-                ctx_path=data_dir
-            )
-            print("✅ Agent initialized successfully")
-        except Exception as e:
-            print(f"❌ Failed to initialize agent: {e}")
-            return
-        
-        # Run analysis tests
-        exploration_passed = test_data_exploration(agent, data_dir)
-        analysis_passed = test_sales_analysis(agent, data_dir)
-        insights_passed = test_business_insights(agent, data_dir)
-        
-        # Summary
-        print("\n" + "=" * 65)
-        print("📊 DATA ANALYSIS TEST SUMMARY")
-        print(f"🔍 Data exploration: {'✅ PASSED' if exploration_passed else '❌ FAILED'}")
-        print(f"📈 Sales analysis: {'✅ PASSED' if analysis_passed else '❌ FAILED'}")
-        print(f"💡 Business insights: {'✅ PASSED' if insights_passed else '❌ FAILED'}")
-        
-        all_passed = exploration_passed and analysis_passed and insights_passed
-        if all_passed:
-            print("\n🎉 All data analysis tests passed! Your agent can perform comprehensive analysis.")
-        else:
-            print("\n⚠️  Some analysis tests failed. Check the output above for details.")
-
-
-if __name__ == "__main__":
-    main()
+    return config, api_key, model_id, api_base
