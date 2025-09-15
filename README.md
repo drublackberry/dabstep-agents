@@ -1,8 +1,8 @@
-# Dabstep Agents
+# 🤖 DABStep Agents
 
 A data analysis agent system built with smolagents that supports both reasoning and chat-based LLMs for comprehensive data analysis tasks.
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 dabstep-agents/
@@ -22,9 +22,9 @@ dabstep-agents/
 └── .gitignore            # Git ignore rules
 ```
 
-## Setup
+## ⚙️ Setup
 
-### 1. Environment Configuration
+### 1. 🔐 Environment Configuration
 
 Create a `.env` file in the project root with the following variables:
 
@@ -45,13 +45,13 @@ SSL_CERT_FILE=/path/to/your/cert.pem
 OTLP_ENDPOINT=http://127.0.0.1:6006/v1/traces
 ```
 
-### 2. Install Dependencies
+### 2. 📦 Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Launch Tracing (Optional)
+### 3. 📊 Launch Tracing (Optional)
 
 For observability and debugging, start Phoenix tracing server:
 
@@ -61,7 +61,7 @@ python -m phoenix.server.main serve &
 
 Access the Phoenix UI at: http://127.0.0.1:6006
 
-## Usage
+## 🚀 Usage
 
 ### Running the Main Script
 
@@ -98,7 +98,7 @@ python src/run.py --model-id gpt-4o --max-steps 15 --split default
 
 **Note:** All configuration values will be automatically loaded from your `.env` file if not explicitly provided via command line arguments. Command line arguments take precedence over `.env` values.
 
-### Running Tests
+### 🧪 Running Tests
 
 The project includes several test scripts to validate agent capabilities:
 
@@ -147,7 +147,7 @@ Each test provides detailed output including:
 - 📊 Analysis results and insights
 - 🎯 Overall capability assessment
 
-## Agent Types
+## 🧠 Agent Types
 
 ### ChatCodeAgent
 - Optimized for conversational data analysis
@@ -159,7 +159,7 @@ Each test provides detailed output including:
 - Uses reasoning-focused prompts
 - Best for complex analytical tasks requiring deep reasoning
 
-## Tracing and Observability
+## 🔍 Tracing and Observability
 
 The system includes comprehensive tracing via OpenTelemetry and Phoenix:
 
@@ -170,7 +170,7 @@ The system includes comprehensive tracing via OpenTelemetry and Phoenix:
 
 Access traces at: http://127.0.0.1:6006
 
-## Configuration Examples
+## 🔧 Configuration Examples
 
 ### For OpenAI Models
 ```bash
@@ -196,7 +196,7 @@ MODEL=your-model-name
 LLM_GATEWAY=your-provider
 ```
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
 ### Common Issues
 
