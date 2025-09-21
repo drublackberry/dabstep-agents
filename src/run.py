@@ -56,7 +56,8 @@ def parse_args():
     parser.add_argument("--hf_token", type=str, default=env_config.get("HF_TOKEN"))
     parser.add_argument("--split", type=str, default="dev", choices=["default", "dev"])
     parser.add_argument("--timestamp", type=str, default=None)
-    parser.add_argument("--use-reasoning", action="store_true", help="Use reasoning mode for the agent", default=False)
+    parser.add_argument("--use-reasoning", action="store_true", help="Use reasoning mode for the agent", default=True)
+    parser.add_argument("--executor-type", type=str, default="local", choices=["local", "e2b"])
 
     return parser.parse_args()
 
@@ -70,7 +71,8 @@ def run_single_task(
         base_filename: Path,
         is_dev_data: bool,
         max_steps: int,
-        use_reasoning: bool
+        use_reasoning: bool,
+        executor_type: str
 ):
     # Validate model compatibility with use_reasoning parameter
     validate_reasoning_model_compatibility(model_id, use_reasoning)
@@ -82,7 +84,8 @@ def run_single_task(
             api_base=api_base,
             api_key=api_key,
             max_steps=max_steps,
-            ctx_path=ctx_path
+            ctx_path=ctx_path,
+            executor_type=executor_type
         )
         prompt = reasoning_llm_task_prompt.format(
             question=task["question"],
@@ -94,7 +97,8 @@ def run_single_task(
             api_base=api_base,
             api_key=api_key,
             max_steps=max_steps,
-            ctx_path=ctx_path
+            ctx_path=ctx_path,
+            executor_type=executor_type 
         )
         prompt = chat_llm_task_prompt.format(
             ctx_path=ctx_path,
@@ -160,7 +164,8 @@ def main():
             base_filename=base_filename,
             is_dev_data=True, 
             max_steps=args.max_steps,
-            use_reasoning=args.use_reasoning)
+            use_reasoning=args.use_reasoning, 
+            executor_type=args.executor_type)
     
 
     # with ThreadPoolExecutor(max_workers=args.concurrency) as exe:

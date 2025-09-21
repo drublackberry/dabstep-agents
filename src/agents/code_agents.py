@@ -33,7 +33,7 @@ def read_only_open(*args, **kwargs):
 class BaseCodeAgent(CodeAgent, ABC):
     """Base class for specialized CodeAgents with read-only access and configurable system prompts."""
     
-    def __init__(self, model_id: str, api_base=None, api_key=None, max_steps=10, ctx_path=None, enable_tracing=True):
+    def __init__(self, model_id: str, api_base=None, api_key=None, max_steps=10, ctx_path=None, enable_tracing=True, executor_type="local"):
         # Set up tracing before agent initialization
         setup_smolagents_tracing(enable_tracing=enable_tracing)
         
@@ -45,6 +45,7 @@ class BaseCodeAgent(CodeAgent, ABC):
             additional_authorized_imports=ADDITIONAL_AUTHORIZED_IMPORTS,
             max_steps=max_steps,
             verbosity_level=3,
+            executor_type=executor_type,
         )
         
         # Format and set system prompt after initialization
