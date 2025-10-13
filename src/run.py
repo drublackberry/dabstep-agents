@@ -56,7 +56,7 @@ def parse_args():
     parser.add_argument("--hf_token", type=str, default=env_config.get("HF_TOKEN"))
     parser.add_argument("--split", type=str, default="dev", choices=["default", "dev"])
     parser.add_argument("--timestamp", type=str, default=None)
-    parser.add_argument("--use-reasoning", action="store_true", help="Use reasoning mode for the agent", default=False)
+    parser.add_argument("--use-reasoning", action="store_true", help="Use reasoning mode for the agent", default=True)
 
     return parser.parse_args()
 

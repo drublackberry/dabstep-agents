@@ -5,6 +5,12 @@ This module implements a collaborative multi-agent architecture where:
 1. Librarian: Retrieves and organizes domain knowledge and data
 2. Strategist: Creates trajectories and plans based on librarian input
 3. Executor: Implements and executes code based on strategist plans
+
+State Management:
+- LibrarianAgent maintains an internal catalog cache for efficient reuse
+- MultiAgentOrchestrator provides shared state accessible to all agents
+- Catalog is created once and reused across multiple domain knowledge queries
+- Domain knowledge is stored per-task in the orchestrator's shared state
 """
 
 from typing import Dict, List, Any, Optional
@@ -47,6 +53,30 @@ class LibrarianAgent(BaseCodeAgent):
     - Maintain context about data relationships and constraints
     """
     
+    def __init__(self, model_id: str, api_base=None, api_key=None, max_steps=10, ctx_path=None, enable_tracing=True):
+        """Initialize LibrarianAgent and log directory contents."""
+        super().__init__(model_id, api_base, api_key, max_steps, ctx_path, enable_tracing)
+        
+        # Initialize catalog cache
+        self._catalog_cache: Optional[Dict[str, Any]] = None
+        self._catalog_ctx_path: Optional[str] = None
+        
+        print(f"📚 LibrarianAgent initialized")
+        print(f"📂 Context path set to: {ctx_path}")
+        
+        if ctx_path:
+            from pathlib import Path
+            ctx_dir = Path(ctx_path)
+            if ctx_dir.exists():
+                print(f"📋 Directory contents:")
+                for item in sorted(ctx_dir.iterdir()):
+                    item_type = "📁" if item.is_dir() else "📄"
+                    print(f"   {item_type} {item.name}")
+            else:
+                print(f"⚠️  Warning: Directory does not exist yet: {ctx_path}")
+        else:
+            print(f"⚠️  Warning: No context path provided")
+    
     def get_system_prompt_template(self) -> str:
         return """You are the Librarian Agent, a specialist in data discovery and knowledge organization.
 
@@ -63,48 +93,263 @@ When working with data:
 - Create clear, structured summaries that other agents can use
 - Maintain awareness of data lineage and dependencies
 
-Your output should be structured as:
-```json
-{{
-    "data_catalog": {{
-        "files": [...],
-        "schemas": {{...}},
-        "relationships": [...]
-    }},
-    "knowledge_summary": "...",
-    "constraints": [...],
-    "recommendations": [...]
-}}
-```
+Your multi-step workflow:
+1. **Explore & Execute**: Use Python code to explore files and read data with proper error handling
+2. **Validate Results**: Inspect the resulting dictionary to check for errors or failed file loads
+3. **Retry if Needed**: If any files failed to load or have errors, fix the code and retry
+4. **Final Check**: Only when all data is successfully loaded and validated, use final_answer()
+
+IMPORTANT: Before calling final_answer(), you MUST:
+- Print and inspect the catalog dictionary
+- Check that no file has error messages like "Error cannot open" or exceptions in its content
+- Verify all expected files were successfully processed
+- If you find errors, fix them and re-execute the code
+- Only call final_answer() when you confirm the catalog is complete and error-free
+
+Example with error handling and validation:
+Code:
+```py
+import pandas as pd
+from pathlib import Path
+
+# Step 1: Explore directory and read files with error handling
+ctx = Path("{ctx_path}")
+files = [f.name for f in ctx.iterdir() if f.is_file()]
+catalog = {{"files": [], "errors": []}}
+
+for f in files:
+    file_path = ctx / f
+    file_info = {{"name": f, "type": None, "content_summary": None, "status": "pending"}}
+    
+    try:
+        if f.endswith('.csv'):
+            df = pd.read_csv(file_path)
+            file_info["type"] = "csv"
+            file_info["content_summary"] = {{"columns": list(df.columns), "rows": len(df), "sample": df.head(3).to_dict()}}
+            file_info["status"] = "success"
+        elif f.endswith('.json'):
+            data = pd.read_json(file_path)
+            file_info["type"] = "json"
+            file_info["content_summary"] = {{"shape": data.shape, "columns": list(data.columns) if hasattr(data, 'columns') else "array"}}
+            file_info["status"] = "success"
+        elif f.endswith('.md') or f.endswith('.txt'):
+            with open(file_path, 'r') as txt_file:
+                content = txt_file.read()
+            file_info["type"] = "markdown" if f.endswith('.md') else "text"
+            file_info["content_summary"] = {{"length": len(content), "preview": content[:300], "lines": len(content.split('\\n'))}}
+            file_info["status"] = "success"
+    except Exception as e:
+        file_info["status"] = "error"
+        file_info["error_message"] = str(e)
+        catalog["errors"].append(f"Failed to load {{f}}: {{str(e)}}")
+    
+    catalog["files"].append(file_info)
+
+# Step 2: Validate results - print and inspect
+print("Catalog validation:")
+print(f"Total files: {{len(catalog['files'])}}")
+print(f"Errors: {{len(catalog['errors'])}}")
+for file_info in catalog["files"]:
+    print(f"  {{file_info['name']}}: {{file_info['status']}}")
+
+# Step 3: Check for errors before final_answer
+if catalog["errors"]:
+    print("ERRORS FOUND - Need to fix:")
+    for error in catalog["errors"]:
+        print(f"  - {{error}}")
+    # DO NOT call final_answer yet - fix errors first
+else:
+    print("All files loaded successfully!")
+    # Step 4: Only call final_answer when validated
+    final_answer(catalog)
+```<end_code>
 
 Available imports: {authorized_imports}
+Never try to import final_answer, you have it already!
 
-Remember: You are the foundation of knowledge for the entire system. Be thorough and accurate."""
+Remember: You are the foundation of knowledge for the entire system. Be thorough and accurate.
+Use only final_answer once you have validated that the catalog does not contain any errors.
+Always use final_answer() to return your structured findings."""
 
-    def catalog_data_sources(self, ctx_path: str) -> Dict[str, Any]:
-        """Catalog all available data sources in the given path."""
+    def catalog_data_sources(self, ctx_path: str, force_refresh: bool = False) -> Dict[str, Any]:
+        """Catalog all available data sources in the given path.
+        
+        Args:
+            ctx_path: Path to the context directory
+            force_refresh: If True, bypass cache and create a new catalog
+            
+        Returns:
+            Dictionary containing the catalog and metadata
+        """
+        # Check cache first
+        if not force_refresh and self._catalog_cache is not None and self._catalog_ctx_path == ctx_path:
+            print(f"📚 Librarian: Using cached catalog for {ctx_path}")
+            return self._catalog_cache
+        
         print(f"📚 Librarian: Starting data source cataloging in {ctx_path}")
-        prompt = f"Explore and catalog all data sources in {ctx_path}. Provide a comprehensive overview of available files, their formats, and contents."
+        prompt = f"""Explore and catalog all data sources in {ctx_path}.
+        
+        Your task:
+        1. List all files in the directory
+        2. For each file, determine its format (CSV, JSON, MD, etc.)
+        3. Classify each file and read its content
+        4. Identify relationships between files
+        
+        Build a structured dictionary with a "files" list where EACH file has these fields:
+        
+        **Required fields for each file:**
+        - **name**: File name
+        - **format**: File extension/format (csv, json, md, txt)
+        - **file_type**: Either "data" or "documentation"
+          * "data" = Contains actual data records (CSV, JSON with data)
+          * "documentation" = Contains usage instructions, metadata, README, manual
+        - **is_critical**: Boolean (true/false)
+          * true = Documentation files with essential usage instructions
+          * true = Data files that are referenced in documentation as key files
+          * false = Supporting or optional files
+        - **summary**: Brief description of file contents and purpose
+        - **content_details**: Format-specific information:
+          * For data files: columns/schema, row count, small sample (max 3 rows)
+          * For documentation files: key instructions, constraints, relationships described
+        
+        Also include these top-level fields:
+        - **data_relationships**: How files relate to each other
+        - **key_constraints**: Important limitations or rules from documentation
+        - **usage_guidelines**: Critical instructions from documentation files
+        
+        Example structure:
+        {{
+          "files": [
+            {{
+              "name": "payments.csv",
+              "format": "csv",
+              "file_type": "data",
+              "is_critical": true,
+              "summary": "Main payment transaction data",
+              "content_details": {{"columns": [...], "rows": 1000, "sample": [...]}}
+            }},
+            {{
+              "name": "manual.md",
+              "format": "md",
+              "file_type": "documentation",
+              "is_critical": true,
+              "summary": "Usage instructions for payment data analysis",
+              "content_details": {{"key_instructions": "...", "constraints": "..."}}
+            }}
+          ],
+          "data_relationships": [...],
+          "key_constraints": [...],
+          "usage_guidelines": [...]
+        }}
+        
+        Use final_answer() to return your catalog dictionary.
+        Focus on actionable summaries, not raw data dumps."""
         print(f"📚 Librarian: Running data exploration...")
         response = self.run(prompt)
         print(f"📚 Librarian: ✅ Data cataloging completed")
-        return {"catalog_response": response}
+        
+        # Return structured output with the raw response
+        catalog_result = {
+            "catalog_response": response,
+            "ctx_path": ctx_path,
+            "agent_type": "librarian",
+            "task_type": "catalog"
+        }
+        
+        # Cache the catalog for future use
+        self._catalog_cache = catalog_result
+        self._catalog_ctx_path = ctx_path
+        print(f"📚 Librarian: Catalog cached for reuse")
+        
+        return catalog_result
+    
+    def get_catalog(self) -> Optional[Dict[str, Any]]:
+        """Get the cached catalog if available.
+        
+        Returns:
+            The cached catalog dictionary, or None if no catalog has been created yet
+        """
+        return self._catalog_cache
+    
+    def has_catalog(self, ctx_path: str) -> bool:
+        """Check if a catalog exists for the given context path.
+        
+        Args:
+            ctx_path: Path to check
+            
+        Returns:
+            True if a cached catalog exists for this path
+        """
+        return self._catalog_cache is not None and self._catalog_ctx_path == ctx_path
 
-    def extract_domain_knowledge(self, query: str, ctx_path: str) -> Dict[str, Any]:
-        """Extract specific domain knowledge based on a query."""
+    def extract_domain_knowledge(self, query: str, ctx_path: str, catalog: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Extract specific domain knowledge based on a query.
+        
+        Args:
+            query: The domain knowledge query
+            ctx_path: Path to the context directory
+            catalog: Optional pre-computed catalog. If not provided, will use cached catalog or create new one
+            
+        Returns:
+            Dictionary containing the domain knowledge and metadata
+        """
         print(f"📚 Librarian: Extracting domain knowledge for query: '{query}'")
+        
+        # Use provided catalog, or fall back to cache, or create new one
+        if catalog is None:
+            if self._catalog_cache is not None and self._catalog_ctx_path == ctx_path:
+                print(f"📚 Librarian: Using cached catalog for domain knowledge extraction")
+                catalog = self._catalog_cache
+            else:
+                print(f"📚 Librarian: No catalog provided, creating one first...")
+                catalog = self.catalog_data_sources(ctx_path)
+        
+        # Extract catalog_response for context
+        catalog_info = catalog.get("catalog_response", catalog)
+        
         prompt = f"""Based on the data in {ctx_path}, extract domain knowledge relevant to: {query}
         
-        Provide structured information including:
-        - Relevant data sources
-        - Key concepts and definitions
-        - Data relationships
-        - Constraints and limitations
-        """
+        You have access to the following pre-computed catalog of data sources:
+        {json.dumps(catalog_info, indent=2) if isinstance(catalog_info, dict) else str(catalog_info)}
+        
+        Use this catalog to identify which files exist and their metadata.
+        
+        Your task:
+        1. **FIRST**: Review the catalog above to identify which files are marked as critical (is_critical=true)
+        2. **ALWAYS READ CRITICAL SOURCES**: Read ALL files marked as critical, regardless of whether they seem relevant to the query
+           - Critical sources contain essential context, constraints, and usage guidelines that must always be considered
+           - Even if a critical source doesn't seem directly related to the query, it may contain important constraints or context
+        3. Identify which additional (non-critical) files are relevant to this specific query
+        4. Read and analyze the relevant non-critical data
+        5. Extract key concepts, definitions, and patterns from all sources
+        6. Document data relationships and constraints
+        
+        Build a structured dictionary including:
+        - **critical_sources_read**: List of all critical files that were read (must include ALL critical files)
+        - **relevant_sources**: List of additional relevant files for this specific query
+        - **key_concepts**: Key concepts and definitions from the data
+        - **data_relationships**: Data relationships and dependencies
+        - **constraints**: Constraints and limitations (especially from critical documentation)
+        - **usage_guidelines**: Important usage instructions from critical sources
+        - **sample_data**: Sample data or statistics that illustrate the domain
+        
+        CRITICAL REQUIREMENT: You MUST read every file marked as is_critical=true, even if it doesn't appear directly relevant to the query.
+        Critical files contain essential context that applies to all queries.
+        
+        Use final_answer() to return your knowledge dictionary.
+        Focus on actionable information that helps answer the query."""
         print(f"📚 Librarian: Analyzing domain knowledge...")
         response = self.run(prompt)
         print(f"📚 Librarian: ✅ Domain knowledge extraction completed")
-        return {"knowledge_response": response, "query": query}
+        
+        # Return structured output
+        return {
+            "knowledge_response": response,
+            "query": query,
+            "ctx_path": ctx_path,
+            "agent_type": "librarian",
+            "task_type": "domain_knowledge"
+        }
 
 
 class StrategistAgent(BaseCodeAgent):
@@ -309,6 +554,14 @@ class MultiAgentOrchestrator:
         self.ctx_path = ctx_path
         self.message_history: List[AgentMessage] = []
         
+        # Shared state for multi-agent collaboration
+        self.shared_state: Dict[str, Any] = {
+            "catalog": None,
+            "domain_knowledge": {},
+            "trajectories": [],
+            "execution_results": []
+        }
+        
         # Initialize the three agents
         self.librarian = LibrarianAgent(
             model_id=model_id, api_base=api_base, api_key=api_key, 
@@ -340,8 +593,21 @@ class MultiAgentOrchestrator:
         
         # Step 1: Librarian discovers and organizes data
         print("📚 Librarian: Discovering and organizing data...")
-        librarian_findings = self.librarian.catalog_data_sources(self.ctx_path)
-        domain_knowledge = self.librarian.extract_domain_knowledge(task, self.ctx_path)
+        
+        # Create catalog once and store in shared state
+        if self.shared_state["catalog"] is None:
+            librarian_findings = self.librarian.catalog_data_sources(self.ctx_path)
+            self.shared_state["catalog"] = librarian_findings
+            print("📚 Librarian: Catalog stored in shared state for all agents")
+        else:
+            print("📚 Librarian: Using existing catalog from shared state")
+            librarian_findings = self.shared_state["catalog"]
+        
+        # Extract domain knowledge using the catalog
+        domain_knowledge = self.librarian.extract_domain_knowledge(
+            task, self.ctx_path, catalog=self.shared_state["catalog"]
+        )
+        self.shared_state["domain_knowledge"][task] = domain_knowledge
         
         combined_findings = {
             "data_catalog": librarian_findings,
@@ -392,3 +658,24 @@ class MultiAgentOrchestrator:
         """Add a message to the communication history."""
         message = AgentMessage(sender, recipient, message_type, content)
         self.message_history.append(message)
+    
+    def get_catalog(self) -> Optional[Dict[str, Any]]:
+        """Get the shared catalog from orchestrator state.
+        
+        Returns:
+            The catalog dictionary, or None if no catalog has been created yet
+        """
+        return self.shared_state.get("catalog")
+    
+    def get_domain_knowledge(self, task: Optional[str] = None) -> Dict[str, Any]:
+        """Get domain knowledge from orchestrator state.
+        
+        Args:
+            task: Optional task key. If None, returns all domain knowledge
+            
+        Returns:
+            Domain knowledge dictionary for the task, or all domain knowledge
+        """
+        if task is None:
+            return self.shared_state.get("domain_knowledge", {})
+        return self.shared_state.get("domain_knowledge", {}).get(task)
