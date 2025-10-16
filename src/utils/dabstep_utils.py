@@ -49,10 +49,8 @@ def download_context(base_dir: str, hf_token: str = None) -> str:
     for f in ctx_files:
         hf_hub_download(REPO_ID, repo_type="dataset", filename=f, local_dir=base_dir, token=hf_token)
 
-    root_dir = Path(__file__).resolve().parent.parent
-    full_path = Path(base_dir) / Path(ctx_files[0]).parent
-    relative_path = full_path.relative_to(root_dir)
-    return str(relative_path)
+    ctx_dir = Path(ctx_files[0]).parent
+    return str(ctx_dir)
 
 
 def get_tasks_to_run(data, total: int, base_filename: Path, tasks_ids: list[int]):
