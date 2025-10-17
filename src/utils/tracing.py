@@ -3,7 +3,9 @@ OpenTelemetry tracing utilities for smolagents monitoring.
 """
 
 import os
+from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse, urlunparse
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.resources import Resource
 from opentelemetry import trace
@@ -14,6 +16,37 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExportResult
 
 # Global variable to track if tracing has been initialized
 _tracing_initialized = False
+
+
+def _running_in_container() -> bool:
+    """Use simple heuristics to determine if we're running inside a container."""
+    return Path("/.dockerenv").exists() or os.getenv("DOCKER_CONTAINER") == "true"
+
+
+def _rewrite_endpoint_for_container(endpoint: str) -> str:
+    """If the endpoint points to localhost but we're inside a container, rewrite it to host.docker.internal."""
+    if not endpoint:
+        return endpoint
+
+    try:
+        parsed = urlparse(endpoint)
+    except Exception:
+        return endpoint
+
+    if not parsed.scheme or not parsed.hostname:
+        return endpoint
+
+    hostname = parsed.hostname.lower()
+    if hostname in {"127.0.0.1", "localhost"} and _running_in_container():
+        host_alias = os.getenv("HOST_DOCKER_INTERNAL", "host.docker.internal")
+        netloc = host_alias
+        if parsed.port:
+            netloc = f"{host_alias}:{parsed.port}"
+        rewritten = urlunparse(parsed._replace(netloc=netloc))
+        print(f"Info: OTLP endpoint rewritten for container access: {rewritten}")
+        return rewritten
+
+    return endpoint
 
 
 class ResilientOTLPSpanExporter(OTLPSpanExporter):
@@ -58,9 +91,10 @@ def setup_smolagents_tracing(
     try:
         # Use provided endpoint or default
         if endpoint is None:
-            endpoint = os.getenv("OTLP_ENDPOINT", "").strip()
-        else:
-            endpoint = endpoint.strip()
+            endpoint = os.getenv("OTLP_ENDPOINT", "")
+
+        endpoint = (endpoint or "").strip()
+        endpoint = _rewrite_endpoint_for_container(endpoint)
 
         if not endpoint:
             _tracing_initialized = False
