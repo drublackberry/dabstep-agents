@@ -4,7 +4,47 @@
 
 The multi-agent system implements a **hybrid state management approach** that combines instance-level caching with orchestrator-level shared state. This ensures efficient catalog reuse while maintaining clean separation of concerns.
 
+Additionally, the system uses **pre-read directory listings** to eliminate hallucinations and ensure consistent file discovery by providing the agent with hardcoded directory contents rather than requiring it to write exploration code.
+
 ## Architecture
+
+### 0. Pre-Read Directory Listing (Anti-Hallucination)
+
+The system includes a `get_directory_listing()` function that hardcodes directory exploration:
+
+```python
+def get_directory_listing(ctx_path: str) -> Dict[str, Any]:
+    """Pre-read directory contents to provide to the agent."""
+    # Returns:
+    # {
+    #   "directory_path": str,
+    #   "total_files": int,
+    #   "total_directories": int,
+    #   "files": [
+    #     {
+    #       "name": str,
+    #       "path": str,
+    #       "size_bytes": int,
+    #       "extension": str,
+    #       "category": "data" | "documentation" | "code" | "other"
+    #     }
+    #   ],
+    #   "directories": [...]
+    # }
+```
+
+**Benefits:**
+- Eliminates hallucinations about file existence
+- Provides accurate file paths and metadata
+- Agent doesn't need to write directory exploration code
+- Consistent file discovery across all operations
+- Reduces token usage by avoiding redundant exploration code
+
+**How it works:**
+- Called automatically in `catalog_data_sources()` and `extract_domain_knowledge()`
+- Directory listing is injected into the agent's prompt
+- Agent is explicitly told NOT to write directory listing code
+- Agent uses the provided file paths to read file contents
 
 ### 1. LibrarianAgent Instance-Level Cache
 

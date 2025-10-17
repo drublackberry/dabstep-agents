@@ -16,6 +16,7 @@ State Management:
 from typing import Dict, List, Any, Optional
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from agents.code_agents import BaseCodeAgent
 from agents.models import LiteLLMModelWithBackOff
 from constants import ADDITIONAL_AUTHORIZED_IMPORTS
@@ -40,6 +41,73 @@ class TaskTrajectory:
     current_step: int = 0
     status: str = "pending"  # pending, in_progress, completed, failed
     context: Optional[Dict] = None
+
+
+def get_directory_listing(ctx_path: str) -> Dict[str, Any]:
+    """Pre-read directory contents to provide to the agent.
+    
+    This function hardcodes the directory exploration logic to avoid
+    hallucinations and ensure consistent file discovery.
+    
+    Args:
+        ctx_path: Path to the context directory
+        
+    Returns:
+        Dictionary with directory contents and file metadata
+    """
+    ctx_dir = Path(ctx_path)
+
+    dir_listing_dict = {
+        "directory_path": ctx_path,
+        "total_files": 0,
+        "total_directories": 0,
+        "files": [],
+        "directories": [],
+        "status": "pending",
+    }
+    
+    if not ctx_dir.exists():
+        dir_listing_dict['status'] = f"Error. Directory does not exist: {ctx_path}"
+        return dir_listing_dict
+    
+    files = []
+    directories = []
+    
+    for item in sorted(ctx_dir.iterdir()):
+        if item.is_file():
+            # Get file metadata
+            file_info = {
+                "name": item.name,
+                "path": str(item),
+                "size_bytes": item.stat().st_size,
+                "extension": item.suffix.lower(),
+            }
+            
+            # Determine file type based on extension
+            if file_info["extension"] in [".csv", ".json", ".parquet", ".xlsx"]:
+                file_info["category"] = "data"
+            elif file_info["extension"] in [".md", ".txt", ".pdf", ".doc", ".docx"]:
+                file_info["category"] = "documentation"
+            elif file_info["extension"] in [".py", ".ipynb", ".r", ".sql"]:
+                file_info["category"] = "code"
+            else:
+                file_info["category"] = "other"
+            
+            files.append(file_info)
+        elif item.is_dir():
+            directories.append({
+                "name": item.name,
+                "path": str(item)
+            })
+    
+    dir_listing_dict['status'] = "success"
+    dir_listing_dict['total_files'] = len(files)
+    dir_listing_dict['total_directories'] = len(directories)
+    dir_listing_dict['files'] = files
+    dir_listing_dict['directories'] = directories
+    
+    return dir_listing_dict
+
 
 
 class LibrarianAgent(BaseCodeAgent):
@@ -86,6 +154,16 @@ Your primary responsibilities:
 3. **Information Organization**: Create structured summaries of findings for other agents
 4. **Context Maintenance**: Keep track of data constraints, formats, and dependencies
 
+CRITICAL: Code Format Requirements
+You MUST format your code responses using this exact pattern:
+Thought: [Your reasoning here]
+Code:
+```py
+[Your Python code here]
+```<end_code>
+
+Do NOT use any other code format. Always include "Thought:", "Code:", and the closing ```<end_code> marker.
+
 When working with data:
 - Always start by exploring the `{ctx_path}` directory thoroughly
 - Document file structures, data schemas, and relationships
@@ -106,61 +184,66 @@ IMPORTANT: Before calling final_answer(), you MUST:
 - If you find errors, fix them and re-execute the code
 - Only call final_answer() when you confirm the catalog is complete and error-free
 
-Example with error handling and validation:
+Example workflow - Read files from the pre-provided directory listing:
+
+Thought: I will read each file from the directory listing and build a catalog with error handling.
 Code:
 ```py
 import pandas as pd
 from pathlib import Path
 
-# Step 1: Explore directory and read files with error handling
+# Use the pre-provided directory listing - DO NOT list files yourself
+# The directory listing is already provided in the task description above
 ctx = Path("{ctx_path}")
-files = [f.name for f in ctx.iterdir() if f.is_file()]
+
+# Example: Read files based on the provided listing
 catalog = {{"files": [], "errors": []}}
 
-for f in files:
-    file_path = ctx / f
-    file_info = {{"name": f, "type": None, "content_summary": None, "status": "pending"}}
+# Iterate through files from the provided directory listing
+# Replace this with actual file names from the listing above
+for file_info_from_listing in []:  # Get from the directory listing provided
+    filename = file_info_from_listing.get("name")
+    filepath = file_info_from_listing.get("path")
+    
+    if not filename:
+        continue
+    
+    file_entry = {{"name": filename, "type": None, "content_summary": None, "status": "pending"}}
     
     try:
-        if f.endswith('.csv'):
-            df = pd.read_csv(file_path)
-            file_info["type"] = "csv"
-            file_info["content_summary"] = {{"columns": list(df.columns), "rows": len(df), "sample": df.head(3).to_dict()}}
-            file_info["status"] = "success"
-        elif f.endswith('.json'):
-            data = pd.read_json(file_path)
-            file_info["type"] = "json"
-            file_info["content_summary"] = {{"shape": data.shape, "columns": list(data.columns) if hasattr(data, 'columns') else "array"}}
-            file_info["status"] = "success"
-        elif f.endswith('.md') or f.endswith('.txt'):
-            with open(file_path, 'r') as txt_file:
+        if filename.endswith('.csv'):
+            df = pd.read_csv(filepath)
+            file_entry["type"] = "csv"
+            file_entry["content_summary"] = {{"columns": list(df.columns), "rows": len(df), "sample": df.head(3).to_dict()}}
+            file_entry["status"] = "success"
+        elif filename.endswith('.json'):
+            data = pd.read_json(filepath)
+            file_entry["type"] = "json"
+            file_entry["content_summary"] = {{"shape": data.shape, "columns": list(data.columns) if hasattr(data, 'columns') else "array"}}
+            file_entry["status"] = "success"
+        elif filename.endswith('.md') or filename.endswith('.txt'):
+            with open(filepath, 'r') as txt_file:
                 content = txt_file.read()
-            file_info["type"] = "markdown" if f.endswith('.md') else "text"
-            file_info["content_summary"] = {{"length": len(content), "preview": content[:300], "lines": len(content.split('\\n'))}}
-            file_info["status"] = "success"
+            file_entry["type"] = "markdown" if filename.endswith('.md') else "text"
+            file_entry["content_summary"] = {{"length": len(content), "preview": content[:300]}}
+            file_entry["status"] = "success"
     except Exception as e:
-        file_info["status"] = "error"
-        file_info["error_message"] = str(e)
-        catalog["errors"].append(f"Failed to load {{f}}: {{str(e)}}")
+        file_entry["status"] = "error"
+        file_entry["error_message"] = str(e)
+        catalog["errors"].append(f"Failed to load {{filename}}: {{str(e)}}")
     
-    catalog["files"].append(file_info)
+    catalog["files"].append(file_entry)
 
-# Step 2: Validate results - print and inspect
+# Validate results
 print("Catalog validation:")
 print(f"Total files: {{len(catalog['files'])}}")
 print(f"Errors: {{len(catalog['errors'])}}")
-for file_info in catalog["files"]:
-    print(f"  {{file_info['name']}}: {{file_info['status']}}")
 
-# Step 3: Check for errors before final_answer
+# Check for errors before final_answer
 if catalog["errors"]:
-    print("ERRORS FOUND - Need to fix:")
-    for error in catalog["errors"]:
-        print(f"  - {{error}}")
-    # DO NOT call final_answer yet - fix errors first
+    print("ERRORS FOUND - Need to fix")
 else:
     print("All files loaded successfully!")
-    # Step 4: Only call final_answer when validated
     final_answer(catalog)
 ```<end_code>
 
@@ -187,13 +270,33 @@ Always use final_answer() to return your structured findings."""
             return self._catalog_cache
         
         print(f"📚 Librarian: Starting data source cataloging in {ctx_path}")
-        prompt = f"""Explore and catalog all data sources in {ctx_path}.
         
-        Your task:
-        1. List all files in the directory
-        2. For each file, determine its format (CSV, JSON, MD, etc.)
-        3. Classify each file and read its content
-        4. Identify relationships between files
+        # Pre-read directory contents to avoid hallucinations
+        dir_listing = get_directory_listing(ctx_path)
+        
+        # Check for directory listing errors
+        if 'status' in dir_listing and 'error' in dir_listing['status'].lower():
+            print(f"❌ Librarian: Directory error - {dir_listing['status']}")
+            return {
+                "catalog_response": {"error": dir_listing['status'], "files": []},
+                "ctx_path": ctx_path,
+                "agent_type": "librarian",
+                "task_type": "catalog"
+            }
+        
+        prompt = f"""You are cataloging data sources in the directory: {ctx_path}
+
+**DIRECTORY CONTENTS (pre-read for you):**
+{json.dumps(dir_listing, indent=2)}
+
+The directory has been explored and contains {dir_listing.get('total_files', 0)} files.
+DO NOT write code to list the directory - the file list above is complete and accurate.
+        
+Your task:
+1. For EACH file listed above, read its content using the file path provided
+2. Classify each file based on its content
+3. Identify relationships between files
+4. Extract key information from documentation files
         
         Build a structured dictionary with a "files" list where EACH file has these fields:
         
@@ -241,9 +344,9 @@ Always use final_answer() to return your structured findings."""
           "key_constraints": [...],
           "usage_guidelines": [...]
         }}
-        
-        Use final_answer() to return your catalog dictionary.
-        Focus on actionable summaries, not raw data dumps."""
+        Create a dictionary called catalog_dict that contains that information.
+        Use final_answer(catalog_dict) to return your catalog dictionary.
+        """
         print(f"📚 Librarian: Running data exploration...")
         response = self.run(prompt)
         print(f"📚 Librarian: ✅ Data cataloging completed")
@@ -307,7 +410,38 @@ Always use final_answer() to return your structured findings."""
         # Extract catalog_response for context
         catalog_info = catalog.get("catalog_response", catalog)
         
+        # Check if catalog has errors
+        if isinstance(catalog_info, dict) and 'error' in catalog_info:
+            print(f"❌ Librarian: Cannot extract domain knowledge - catalog has errors")
+            return {
+                "knowledge_response": {"error": catalog_info['error']},
+                "query": query,
+                "ctx_path": ctx_path,
+                "agent_type": "librarian",
+                "task_type": "domain_knowledge"
+            }
+        
+        # Pre-read directory contents to avoid hallucinations
+        dir_listing = get_directory_listing(ctx_path)
+        
+        # Check for directory listing errors
+        if 'status' in dir_listing and 'error' in dir_listing['status'].lower():
+            print(f"❌ Librarian: Directory error - {dir_listing['status']}")
+            return {
+                "knowledge_response": {"error": dir_listing['status']},
+                "query": query,
+                "ctx_path": ctx_path,
+                "agent_type": "librarian",
+                "task_type": "domain_knowledge"
+            }
+        
         prompt = f"""Based on the data in {ctx_path}, extract domain knowledge relevant to: {query}
+
+**DIRECTORY CONTENTS (pre-read for you):**
+{json.dumps(dir_listing, indent=2)}
+
+The directory has been explored and contains {dir_listing.get('total_files', 0)} files.
+DO NOT write code to list the directory - the file list above is complete and accurate.
         
         You have access to the following pre-computed catalog of data sources:
         {json.dumps(catalog_info, indent=2) if isinstance(catalog_info, dict) else str(catalog_info)}
@@ -316,7 +450,7 @@ Always use final_answer() to return your structured findings."""
         
         Your task:
         1. **FIRST**: Review the catalog above to identify which files are marked as critical (is_critical=true)
-        2. **ALWAYS READ CRITICAL SOURCES**: Read ALL files marked as critical, regardless of whether they seem relevant to the query
+        2. **ALWAYS READ CRITICAL SOURCES**: Read ALL files marked as critical using the file paths from the directory listing, regardless of whether they seem relevant to the query
            - Critical sources contain essential context, constraints, and usage guidelines that must always be considered
            - Even if a critical source doesn't seem directly related to the query, it may contain important constraints or context
         3. Identify which additional (non-critical) files are relevant to this specific query
