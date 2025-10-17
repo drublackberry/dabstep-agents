@@ -3,9 +3,6 @@
 import yaml
 from utils.tracing import setup_smolagents_tracing
 
-# Initialize tracing for all smolagents usage
-setup_smolagents_tracing()
-
 import argparse
 import logging
 import os
@@ -54,6 +51,8 @@ def parse_args():
     parser.add_argument("--api-base", type=str, default=env_config.get("BASE_URL"))
     parser.add_argument("--api-key", type=str, default=env_config.get("API_KEY"))
     parser.add_argument("--hf_token", type=str, default=env_config.get("HF_TOKEN"))
+    parser.add_argument("--llm-gateway", type=str, default=env_config.get("LLM_GATEWAY"))
+    parser.add_argument("--otlp-endpoint", type=str, default=env_config.get("OTLP_ENDPOINT"))
     parser.add_argument("--split", type=str, default="dev", choices=["default", "dev"])
     parser.add_argument("--timestamp", type=str, default=None)
     parser.add_argument("--use-reasoning", action="store_true", help="Use reasoning mode for the agent", default=False)
@@ -121,6 +120,43 @@ def run_single_task(
 
 def main():
     args = parse_args()
+    endpoint = args.otlp_endpoint or os.getenv("OTLP_ENDPOINT")
+    setup_smolagents_tracing(
+        endpoint=endpoint,
+        enable_tracing=bool(endpoint),
+        force_reinit=True
+    )
+    gateway = (args.llm_gateway or os.getenv("LLM_GATEWAY") or "").strip()
+
+    if gateway and args.api_key:
+        provider_specific_env = {
+            "openai": "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "fireworks": "FIREWORKS_API_KEY",
+            "huggingface": "HUGGINGFACEHUB_API_TOKEN",
+        }
+        env_key = provider_specific_env.get(gateway.lower())
+        if env_key:
+            os.environ[env_key] = args.api_key
+
+    if gateway and args.api_base:
+        provider_base_env = {
+            "openai": "OPENAI_API_BASE",
+            "anthropic": "ANTHROPIC_BASE_URL",
+        }
+        base_key = provider_base_env.get(gateway.lower())
+        if base_key:
+            os.environ[base_key] = args.api_base
+
+    if gateway:
+        os.environ["LLM_GATEWAY"] = gateway
+
+    normalized_model_id = args.model_id
+    if gateway:
+        prefix = f"{gateway}/"
+        if not normalized_model_id.startswith(prefix):
+            normalized_model_id = f"{prefix}{normalized_model_id}"
+
     logger.warning(f"Starting run with arguments: {args}")
 
     ctx_path = download_context(str(Path().resolve()), args.hf_token)
@@ -128,7 +164,7 @@ def main():
     runs_dir = Path().resolve() / "runs"
     runs_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") if not args.timestamp else args.timestamp
-    base_filename = runs_dir / f"{args.model_id.replace('/', '_').replace('.', '_')}/{args.split}/{int(timestamp)}"
+    base_filename = runs_dir / f"{normalized_model_id.replace('/', '_').replace('.', '_')}/{args.split}/{int(timestamp)}"
 
     # save config
     os.makedirs(base_filename, exist_ok=True)
@@ -153,7 +189,7 @@ def main():
     for task in tasks_to_run:
         run_single_task(
             task=task, 
-            model_id=f"{os.getenv('LLM_GATEWAY')}/{args.model_id}", 
+            model_id=normalized_model_id,
             api_base=args.api_base, 
             api_key=args.api_key, 
             ctx_path=ctx_path,

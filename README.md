@@ -26,7 +26,13 @@ dabstep-agents/
 
 ### 1. 🔐 Environment Configuration
 
-Create a `.env` file in the project root with the following variables:
+Duplicate the provided sample file and edit values with your credentials:
+
+```bash
+cp .env.example .env
+```
+
+Update `.env` in the project root with values that match your setup:
 
 ```bash
 # API Configuration
@@ -50,6 +56,26 @@ OTLP_ENDPOINT=http://127.0.0.1:6006/v1/traces
 ```bash
 pip install -r requirements.txt
 ```
+
+### 🐳 Containerized Setup (Optional)
+
+Run the agents in an isolated Docker container while keeping LLM access outside the container:
+
+1. Build the image (only needed after dependency changes):
+   ```bash
+   docker compose build
+   ```
+2. Launch an interactive shell with the project mounted:
+   ```bash
+   ./scripts/docker-shell.sh
+   ```
+   The script ensures `data/` and `runs/` exist locally and drops you into a shell inside the container.
+3. Execute any commands from the README inside that shell, for example:
+   ```bash
+   python src/run.py --max-tasks 5 --split dev
+   ```
+
+The container automatically loads environment variables from `.env`, so API keys remain on the host. HTTP requests to providers like OpenAI, Anthropic, Ollama (via exposed ports), or Hugging Face run over the host network. When using local gateways (e.g., Ollama on the host), expose the service to Docker (for macOS/Linux this works out-of-the-box via `host.docker.internal`).
 
 ### 3. 📊 Launch Tracing (Optional)
 

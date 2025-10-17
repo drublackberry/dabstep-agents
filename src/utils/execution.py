@@ -28,11 +28,12 @@ def get_env():
         "MODEL": os.getenv("MODEL"),
         "LLM_GATEWAY": os.getenv("LLM_GATEWAY"),
         "SSL_CERT_FILE": os.getenv("SSL_CERT_FILE"),
-        "HF_TOKEN": os.getenv("HF_TOKEN")
+        "HF_TOKEN": os.getenv("HF_TOKEN"),
+        "OTLP_ENDPOINT": os.getenv("OTLP_ENDPOINT"),
     }
     
     # Check each required variable individually
-    required_vars = ["BASE_URL", "API_KEY", "MODEL", "SSL_CERT_FILE", "HF_TOKEN"]
+    required_vars = ["BASE_URL", "API_KEY", "MODEL", "HF_TOKEN"]
     missing_vars = []
     
     for var in required_vars:
