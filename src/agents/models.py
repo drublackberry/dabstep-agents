@@ -24,6 +24,26 @@ class LiteLLMModelWithBackOff(LiteLLMModel):
                 litellm.InternalServerError
         ))
     )
-    def __call__(self, *args, **kwargs):
-        return super().__call__(max_tokens=self.max_tokens, *args, **kwargs)
+    def generate(self, *args, **kwargs):
+        """Override generate method with retry logic."""
+        if self.max_tokens:
+            kwargs['max_tokens'] = self.max_tokens
+        return super().generate(*args, **kwargs)
+
+    @retry(
+        stop=stop_after_attempt(450),
+        wait=wait_exponential(min=1, max=120, exp_base=2, multiplier=1) + wait_random(0, 5),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        retry=retry_if_exception_type((
+                litellm.Timeout,
+                litellm.RateLimitError,
+                litellm.APIConnectionError,
+                litellm.InternalServerError
+        ))
+    )
+    def generate_stream(self, *args, **kwargs):
+        """Override generate_stream method with retry logic."""
+        if self.max_tokens:
+            kwargs['max_tokens'] = self.max_tokens
+        return super().generate_stream(*args, **kwargs)
 

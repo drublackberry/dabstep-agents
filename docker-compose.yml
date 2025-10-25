@@ -11,6 +11,8 @@ services:
       - ./runs:/workspace/runs
     env_file:
       - .env
+    environment:
+      - DOCKER_CONTAINER=true
     ports:
       - "6006:6006"
     extra_hosts:
