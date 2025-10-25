@@ -58,7 +58,7 @@ class BaseCodeAgent(CodeAgent, ABC):
         # Format and set system prompt after initialization
         formatted_prompt = self.get_system_prompt_template()
         if ctx_path:
-            formatted_prompt = self.get_system_prompt_template().format(ctx_path=ctx_path, authorized_imports=RESTRICTED_AUTHORIZED_IMPORTS)
+            formatted_prompt = self.get_system_prompt_template().format(ctx_path=ctx_path, authorized_imports=authorized_imports)
         
         # Set the system prompt using the prompt_templates approach
         self.prompt_templates["system_prompt"] = formatted_prompt
