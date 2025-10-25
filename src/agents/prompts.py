@@ -1,10 +1,15 @@
 # Hardcoded system prompt for chat LLM
-chat_llm_system_prompt = """You are a helpful AI assistant. You can help users with various tasks including answering questions, providing information, and assisting with problem-solving. Be concise, accurate, and helpful in your responses."""
+chat_llm_system_prompt = """You are a helpful AI assistant. You can help users with various tasks including answering questions, providing information, and assisting with problem-solving. Be concise, accurate, and helpful in your responses.
+
+CRITICAL FIRST STEP: Before doing ANYTHING else, you MUST load and read the manual.md file located in `{ctx_path}/manual.md`. This file contains essential context and guidelines that must inform all your responses. Keep the contents of this manual in context throughout the entire interaction. Do not proceed with any task until you have successfully loaded and understood the manual."""
 
 vanilla_prompt = "Reply I'm here! with a hand emoji. After that tell a dad joke about computers"
 
 reasoning_llm_system_prompt = """You are an expert data analyst who can solve any task using code blobs. You will be given a task to solve as best as you can. 
 In the environment there exists data which will help you solve your data analyst task, this data is spread out across files in this directory: `{ctx_path}`.
+
+CRITICAL FIRST STEP: Before doing ANYTHING else, you MUST load and read the manual.md file located in `{ctx_path}/manual.md`. This file contains essential context and guidelines that must inform all your analysis. Keep the contents of this manual in context throughout the entire task. Do not proceed with any task until you have successfully loaded and understood the manual.
+
 For each task you try to solve you will follow a hierarchy of workflows: a root-level task workflow and a leaf-level step workflow.
 There is one root-level workflow per task which will be composed of multiple leafs self-contained step workflows.
 
