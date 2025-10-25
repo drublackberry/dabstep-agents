@@ -124,6 +124,43 @@ python src/run.py --model-id gpt-4o --max-steps 15 --split default
 
 **Note:** All configuration values will be automatically loaded from your `.env` file if not explicitly provided via command line arguments. Command line arguments take precedence over `.env` values.
 
+### 📊 Analyzing Results
+
+After running tasks on the dev split, you can analyze the scores using the provided script:
+
+```bash
+# Analyze scores from the latest run (automatic)
+python scripts/show-scores.py
+
+# Analyze a specific run directory
+python scripts/show-scores.py runs/fireworks_ai_model/dev/20250125_143022
+```
+
+The script provides:
+- ✨ **Average score** across all tasks
+- 📝 **Breakdown by difficulty** (Easy vs Hard tasks)
+- 📋 **Individual task results** with pass/fail status
+- 🎯 **Success rate** per difficulty level
+
+Example output:
+```
+📊 SCORE ANALYSIS
+============================================================
+✨ Average Score: 85.00% (17/20 correct)
+
+📝 Total Tasks: 20
+  • Easy: 10/12 (83.33%)
+  • Hard: 7/8 (87.50%)
+
+📋 INDIVIDUAL TASK SCORES
+ 1. ✅ Task 101  | EASY | Score: 1
+ 2. ❌ Task 102  | EASY | Score: 0
+ 3. ✅ Task 103  | HARD | Score: 1
+...
+```
+
+**Note:** Score analysis only works for dev split runs where ground truth answers are available.
+
 ### 🧪 Running Tests
 
 The project includes several test scripts to validate agent capabilities:
