@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from smolagents import CodeAgent, OpenAIServerModel
 from agents.models import LiteLLMModelWithBackOff
 from agents.prompts import reasoning_llm_system_prompt, chat_llm_system_prompt
-from constants import ADDITIONAL_AUTHORIZED_IMPORTS
-from utils.tracing import setup_smolagents_tracing
+from constants import RESTRICTED_AUTHORIZED_IMPORTS, CONTAINER_AUTHORIZED_IMPORTS
+from utils.tracing import setup_smolagents_tracing, running_in_container
 
 
 
@@ -37,12 +37,20 @@ class BaseCodeAgent(CodeAgent, ABC):
         # Set up tracing before agent initialization
         setup_smolagents_tracing(enable_tracing=enable_tracing)
         
+        # Check if running in a container - if so, allow more imports
+        in_container = running_in_container()
+        authorized_imports = CONTAINER_AUTHORIZED_IMPORTS if in_container else RESTRICTED_AUTHORIZED_IMPORTS
+        
+        # Debug output
+        print(f"[BaseCodeAgent] Running in container: {in_container}")
+        print(f"[BaseCodeAgent] Authorized imports count: {len(authorized_imports)}")
+        
         # Initialize the parent CodeAgent without system_prompt parameter
         super().__init__(
             tools=[],
             model=LiteLLMModelWithBackOff(
                 model_id=model_id, api_base=api_base, api_key=api_key, max_tokens=None, max_completion_tokens=3000),
-            additional_authorized_imports=ADDITIONAL_AUTHORIZED_IMPORTS,
+            additional_authorized_imports=authorized_imports,
             max_steps=max_steps,
             verbosity_level=3,
         )
@@ -50,7 +58,7 @@ class BaseCodeAgent(CodeAgent, ABC):
         # Format and set system prompt after initialization
         formatted_prompt = self.get_system_prompt_template()
         if ctx_path:
-            formatted_prompt = self.get_system_prompt_template().format(ctx_path=ctx_path, authorized_imports=ADDITIONAL_AUTHORIZED_IMPORTS)
+            formatted_prompt = self.get_system_prompt_template().format(ctx_path=ctx_path, authorized_imports=authorized_imports)
         
         # Set the system prompt using the prompt_templates approach
         self.prompt_templates["system_prompt"] = formatted_prompt

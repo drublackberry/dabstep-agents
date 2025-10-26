@@ -18,7 +18,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExportResult
 _tracing_initialized = False
 
 
-def _running_in_container() -> bool:
+def running_in_container() -> bool:
     """Use simple heuristics to determine if we're running inside a container."""
     return Path("/.dockerenv").exists() or os.getenv("DOCKER_CONTAINER") == "true"
 
@@ -37,7 +37,7 @@ def _rewrite_endpoint_for_container(endpoint: str) -> str:
         return endpoint
 
     hostname = parsed.hostname.lower()
-    if hostname in {"127.0.0.1", "localhost"} and _running_in_container():
+    if hostname in {"127.0.0.1", "localhost"} and running_in_container():
         host_alias = os.getenv("HOST_DOCKER_INTERNAL", "host.docker.internal")
         netloc = host_alias
         if parsed.port:

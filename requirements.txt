@@ -8,4 +8,16 @@ arize-phoenix
 openinference-instrumentation-smolagents
 python-dotenv
 pytest
+
+# Packages matching CONTAINER_AUTHORIZED_IMPORTS
+numpy
+pandas
+scipy
+scikit-learn
+matplotlib
+seaborn
+plotly
+requests
+PyYAML
+toml
 markdown  
